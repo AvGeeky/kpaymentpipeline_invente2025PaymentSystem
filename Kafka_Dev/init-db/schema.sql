@@ -31,7 +31,7 @@ CREATE TABLE events (
 
 -- PASS TABLE
 CREATE TABLE pass (
-                      uuid UUID PRIMARY KEY,
+                      uuid text PRIMARY KEY,
                       user_email TEXT REFERENCES users(email),
                       payment_id VARCHAR(100) REFERENCES receipts(payment_id),
                       ticket_issued BOOLEAN DEFAULT FALSE,
@@ -40,7 +40,7 @@ CREATE TABLE pass (
 
 -- SLOTS TABLE
 CREATE TABLE slots (
-                       uuid UUID REFERENCES pass(uuid),
+                       uuid text REFERENCES pass(uuid),
                        slot_no INT,
                        event_id INT REFERENCES events(id),
                        attended BOOLEAN DEFAULT FALSE,
