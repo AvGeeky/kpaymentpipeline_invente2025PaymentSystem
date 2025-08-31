@@ -1,4 +1,4 @@
-package com.saipbuilds.kpaymentpipeline.kafka.config;
+package com.saipbuilds.kpaymentpipeline.Kafka.config;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.config.TopicConfig;

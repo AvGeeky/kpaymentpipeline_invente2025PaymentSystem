@@ -10,15 +10,13 @@ import java.util.List;
 @Mapper
 public interface UserMapper {
 
-    @Insert("INSERT INTO users(email, name, phone, created_at, status_paid) " +
-            "VALUES(#{email}, #{name}, #{phone}, now(), false)")
+    @Insert("INSERT INTO users(email, name, phone, created_at) " +
+            "VALUES(#{email}, #{name}, #{phone}, now()) on conflict do nothing")
     void insertUser(User user);
 
     @Select("SELECT * FROM users WHERE email = #{email}")
     User findByEmail(String email);
 
-    @Update("UPDATE users SET status_paid = true WHERE email = #{email}")
-    void markUserPaid(String email);
 
     @Select("SELECT * FROM users")
     List<User> findAll();

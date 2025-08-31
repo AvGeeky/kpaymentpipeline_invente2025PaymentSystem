@@ -8,7 +8,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.5.3
-    container_name: kafka
+    container_name: Kafka
     depends_on:
       - zookeeper
     ports:
@@ -36,5 +36,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: paymentdb
+      # --- ADD THIS LINE ---
+      # Sets the timezone for the container's operating system.
+      # PostgreSQL will inherit this timezone on startup.
+      TZ: Asia/Kolkata
     volumes:
       - ./init-db:/docker-entrypoint-initdb.d

@@ -1,4 +1,4 @@
-package com.saipbuilds.kpaymentpipeline.kafka.config;
+package com.saipbuilds.kpaymentpipeline.Kafka.config;
 
 
 import org.apache.kafka.clients.producer.ProducerConfig;

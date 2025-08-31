@@ -7,8 +7,10 @@ import java.util.List;
 @Mapper
 public interface ReceiptMapper {
 
-    @Insert("INSERT INTO receipts(payment_id, paid_on, method, email, phone) " +
-            "VALUES(#{paymentId}, #{paidOn}, #{method}, #{email}, #{phone})")
+
+    @Insert("INSERT INTO receipts(payment_id, paid_on, method, email, phone, amount) " +
+            "VALUES(#{paymentId}, #{paidOn}, #{method}, #{email}, #{phone}, #{amount}) " +
+            "ON CONFLICT(payment_id) DO NOTHING")
     void insertReceipt(Receipt receipt);
 
     @Select("SELECT * FROM receipts WHERE payment_id = #{paymentId}")
@@ -16,5 +18,11 @@ public interface ReceiptMapper {
 
     @Select("SELECT * FROM receipts")
     List<Receipt> findAll();
+
+    @Select("SELECT COALESCE(passGenerated, false) FROM receipts WHERE payment_id = #{paymentId}")
+    boolean isPassGenerated(String paymentId);
+
+    @Update("UPDATE receipts SET passGenerated = TRUE WHERE payment_id = #{paymentId}")
+    void markPassGeneratedTrue(String paymentId);
 }
 

@@ -10,8 +10,8 @@ CREATE TABLE users (
                        email TEXT PRIMARY KEY,
                        name TEXT NOT NULL,
                        phone TEXT,
-                       created_at TIMESTAMPTZ DEFAULT now(),
-                       status_paid BOOLEAN DEFAULT FALSE
+                       created_at TIMESTAMPTZ DEFAULT now()
+
 );
 
 -- RECEIPTS TABLE
@@ -20,7 +20,10 @@ CREATE TABLE receipts (
                           paid_on TIMESTAMP NOT NULL,
                           method VARCHAR(50),
                           email VARCHAR(255) REFERENCES users(email),
-                          phone VARCHAR(20)
+                          phone VARCHAR(20),
+                          passGenerated BOOLEAN DEFAULT FALSE,
+                          amount varchar(10) NOT NULL
+
 );
 
 -- EVENTS TABLE

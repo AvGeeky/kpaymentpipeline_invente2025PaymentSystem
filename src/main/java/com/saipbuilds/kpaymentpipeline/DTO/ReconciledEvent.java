@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -19,5 +20,5 @@ public class ReconciledEvent {
     private boolean reconciled;
     private String amount;
     private String createdAt;
-    private Map<Integer,String> eventBookingDetails;
+    private List<Map<Integer,Integer>> eventBookingDetails;
 }

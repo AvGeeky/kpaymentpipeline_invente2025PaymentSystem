@@ -1,4 +1,4 @@
-package com.saipbuilds.kpaymentpipeline.kafka.config;
+package com.saipbuilds.kpaymentpipeline.Kafka.config;
 //To configure Kafka consumer to read JSON messages and convert them to Java objects
 
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;

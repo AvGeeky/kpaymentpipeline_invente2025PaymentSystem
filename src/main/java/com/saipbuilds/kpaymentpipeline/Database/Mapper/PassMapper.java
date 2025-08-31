@@ -13,6 +13,8 @@ public interface PassMapper {
             "VALUES(#{uuid}, #{userEmail}, #{paymentId}, false, now())")
     void insertPass(Pass pass);
 
+
+
     @Select("SELECT * FROM pass WHERE uuid = #{uuid}")
     Pass findByUuid(UUID uuid);
 

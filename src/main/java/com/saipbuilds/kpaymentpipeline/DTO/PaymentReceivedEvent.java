@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -13,10 +14,11 @@ import java.util.Map;
 @AllArgsConstructor
 public class PaymentReceivedEvent {
     private String emailID;
+    private String paymentID;
     private String name;
     private String phoneNumber;
     private String createdAt;
-    private Map<Integer,String> eventBookingDetails;
+    private List<Map<Integer,Integer>> eventBookingDetails;
 }
 
 

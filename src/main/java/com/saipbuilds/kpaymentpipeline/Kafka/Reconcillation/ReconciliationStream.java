@@ -1,4 +1,4 @@
-package com.saipbuilds.kpaymentpipeline.kafka.Reconcillation;
+package com.saipbuilds.kpaymentpipeline.Kafka.Reconcillation;
 
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.ReceiptReceivedEvent;
@@ -45,26 +45,25 @@ public class ReconciliationStream {
                 Consumed.with(Serdes.String(), new JsonSerde<>(ReceiptReceivedEvent.class))
         );
 
-        // ---- Re-key both streams by emailID ----
-        KTable<String, PaymentReceivedEvent> paymentsByEmail = paymentStream
-                .selectKey((k, v) -> v.getEmailID())
+        // ---- Re-key both streams by paymentID ----
+        KTable<String, PaymentReceivedEvent> paymentsByPaymentId = paymentStream
+                .selectKey((k, v) -> v.getPaymentID())   // ✅ Only by PaymentID
                 .toTable();
 
-        KTable<String, ReceiptReceivedEvent> receiptsByEmail = receiptStream
-                .selectKey((k, v) -> v.getEmailID())
+        KTable<String, ReceiptReceivedEvent> receiptsByPaymentId = receiptStream
+                .selectKey((k, v) -> v.getPaymentID())   // ✅ Only by PaymentID
                 .toTable();
 
-        // ---- Join streams (by emailID) → ReconciledEvent ----
-        KTable<String, ReconciledEvent> reconciled = paymentsByEmail.join(
-                receiptsByEmail,
+// ---- Join streams (by paymentID) → ReconciledEvent ----
+        KTable<String, ReconciledEvent> reconciled = paymentsByPaymentId.join(
+                receiptsByPaymentId,
                 (payment, receipt) -> {
-                    log.info("Reconciling for email={} paymentId={}",
-                            payment.getEmailID(), receipt.getPaymentID());
+                    log.info("Reconciling paymentId={} for email={}",
+                            payment.getPaymentID(), payment.getEmailID());
 
-                    // Build ReconciledEvent
                     ReconciledEvent event = new ReconciledEvent(
                             payment.getEmailID(),
-                            receipt.getPaymentID(),
+                            payment.getPaymentID(),
                             payment.getName(),
                             receipt.getPhoneNumber(),
                             receipt.getMethod(),
@@ -76,17 +75,21 @@ public class ReconciliationStream {
                     );
 
                     // Persist into DB
-                    reconciliationService.handleReconciliation(event);
-
-                    return event;
+                    try {
+                        boolean b = reconciliationService.handleReconciliation(event);
+                        return b ? event : null;
+                    } catch (Exception e) {
+                        log.error(" error while reconciling paymentId={}", payment.getPaymentID(), e);
+                        return null; // optionally skip on unexpected errors
+                    }
                 }
         );
 
-        // ---- Produce ReconciledEvent to Kafka ----
-        reconciled.toStream().to(
-                paymentReconciledTopic,
-                Produced.with(Serdes.String(), new JsonSerde<>(ReconciledEvent.class))
-        );
+// ---- Only produce non-null events ----
+        reconciled.toStream()
+                .filter((k, v) -> v != null)
+                .to(paymentReconciledTopic,
+                        Produced.with(Serdes.String(), new JsonSerde<>(ReconciledEvent.class)));
 
         log.info("Reconciliation pipeline initialized: {} + {} → {}",
                 paymentReceivedTopic, emailReceiptTopic, paymentReconciledTopic);

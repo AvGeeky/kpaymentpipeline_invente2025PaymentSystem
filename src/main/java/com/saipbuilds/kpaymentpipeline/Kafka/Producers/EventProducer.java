@@ -1,4 +1,4 @@
-package com.saipbuilds.kpaymentpipeline.kafka.Producers;
+package com.saipbuilds.kpaymentpipeline.Kafka.Producers;
 
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.ReceiptReceivedEvent;
