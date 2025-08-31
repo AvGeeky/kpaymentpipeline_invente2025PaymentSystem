@@ -14,12 +14,14 @@ public interface PassMapper {
     void insertPass(Pass pass);
 
 
+    @Select("SELECT uuid FROM pass WHERE payment_id = #{paymentId}")
+    List<String> findUuidsByPaymentId(String paymentId);
 
     @Select("SELECT * FROM pass WHERE uuid = #{uuid}")
     Pass findByUuid(UUID uuid);
 
     @Update("UPDATE pass SET ticket_issued = true WHERE uuid = #{uuid}")
-    void markTicketIssued(UUID uuid);
+    void markTicketIssued(String uuid);
 
     @Select("SELECT * FROM pass")
     List<Pass> findAll();

@@ -1,5 +1,6 @@
 package com.saipbuilds.kpaymentpipeline.Database.Mapper;
 
+import com.saipbuilds.kpaymentpipeline.DTO.SlotDetail;
 import com.saipbuilds.kpaymentpipeline.Database.Entities.Slot;
 import org.apache.ibatis.annotations.*;
 
@@ -21,5 +22,8 @@ public interface SlotMapper {
 
     @Select("SELECT * FROM slots")
     List<Slot> findAll();
+
+    @Select("SELECT slot_no AS slotNo, event_id AS eventId FROM slots WHERE uuid = #{uuid} ORDER BY slot_no ASC")
+    List<SlotDetail> findSlotsByUuid(String uuid);
 }
 
