@@ -9,20 +9,20 @@ import java.util.UUID;
 @Mapper
 public interface PassMapper {
 
-    @Insert("INSERT INTO pass(uuid, user_email, payment_id, ticket_issued, created_at) " +
+    @Insert("INSERT INTO passes(pass_id, user_email, payment_id, ticket_issued, created_at) " +
             "VALUES(#{uuid}, #{userEmail}, #{paymentId}, false, now())")
     void insertPass(Pass pass);
 
 
-    @Select("SELECT uuid FROM pass WHERE payment_id = #{paymentId}")
+    @Select("SELECT pass_id FROM passes WHERE payment_id = #{paymentId}")
     List<String> findUuidsByPaymentId(String paymentId);
 
-    @Select("SELECT * FROM pass WHERE uuid = #{uuid}")
+    @Select("SELECT * FROM passes WHERE pass_id = #{uuid}")
     Pass findByUuid(UUID uuid);
 
-    @Update("UPDATE pass SET ticket_issued = true WHERE uuid = #{uuid}")
+    @Update("UPDATE passes SET ticket_issued = true WHERE pass_id = #{uuid}")
     void markTicketIssued(String uuid);
 
-    @Select("SELECT * FROM pass")
+    @Select("SELECT * FROM passes")
     List<Pass> findAll();
 }

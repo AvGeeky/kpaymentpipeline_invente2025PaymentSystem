@@ -7,7 +7,7 @@ import com.saipbuilds.kpaymentpipeline.Database.Mapper.PassMapper;
 import com.saipbuilds.kpaymentpipeline.Database.Mapper.SlotMapper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
+import com.saipbuilds.kpaymentpipeline.Database.Mapper.EventMapper;
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
@@ -28,12 +28,14 @@ public class AsyncEmailSenderUtil {
     private static Session session = null;
     private static final int MAX_ATTEMPTS = 3; // Increased for robustness
     private final SlotMapper slotMapper;
+    private final EventMapper eventMapper;
 
     private final PassMapper passMapper;
 
     // PassMapper is injected to fetch UUIDs for QR codes
-    public AsyncEmailSenderUtil(SlotMapper slotMapper, PassMapper passMapper) {
+    public AsyncEmailSenderUtil(SlotMapper slotMapper, EventMapper eventMapper, PassMapper passMapper) {
         this.slotMapper = slotMapper;
+        this.eventMapper = eventMapper;
         this.passMapper = passMapper;
         initEmailProperties();
     }
@@ -70,7 +72,6 @@ public class AsyncEmailSenderUtil {
             org.slf4j.LoggerFactory.getLogger(AsyncEmailSenderUtil.class).error("Failed to connect to email server", e);
         }
     }
-
     /**
      * Generates the HTML content for the ticket confirmation email.
      *
@@ -85,28 +86,48 @@ public class AsyncEmailSenderUtil {
         for (int i = 0; i < event.getEventBookingDetails().size(); i++) {
             String ticketUuid = (i < ticketUuids.size()) ? ticketUuids.get(i) : "N/A";
             List<SlotDetail> slotDetails = slotMapper.findSlotsByUuid(ticketUuid);
-            // Use Java Streams to efficiently convert the List into a Map.
+
+            // Map slotNo → eventId
             Map<Integer, Integer> ticketDetails = slotDetails.stream()
                     .collect(Collectors.toMap(SlotDetail::getSlotNo, SlotDetail::getEventId));
 
-
-            String qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=" + URLEncoder.encode(ticketUuid, StandardCharsets.UTF_8);
+            String qrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data="
+                    + URLEncoder.encode(ticketUuid, StandardCharsets.UTF_8);
 
             ticketsHtml.append(String.format("""
-                <div style="background:#f9f9f9; border:1px solid #ddd; border-radius:12px; padding:20px; margin-bottom:20px; text-align:center;">
-                    <h3 style="color:#0055A4; font-size:1.4rem; margin-top:0; margin-bottom:15px;">Ticket #%d</h3>
-                    <img src="%s" alt="QR Code for Ticket %s" style="margin-bottom:15px;">
-                    <p style="font-size:14px; color:#555; margin-bottom:10px;">Ticket ID: %s</p>
-                    <table style="width:100%%; text-align:left; font-size:15px; color:#333; border-collapse: collapse;">
+            <div style="background:#f9f9f9; border:1px solid #ddd; border-radius:12px; padding:20px; margin-bottom:20px; text-align:center;">
+                <h3 style="color:#0055A4; font-size:1.4rem; margin-top:0; margin-bottom:15px;">Ticket #%d</h3>
+                <img src="%s" alt="QR Code for Ticket %s" style="margin-bottom:15px;">
+                <p style="font-size:14px; color:#555; margin-bottom:10px;">Ticket ID: %s</p>
+                <table style="width:100%%; text-align:left; font-size:15px; color:#333; border-collapse: collapse;">
+                    <tr>
+                        <th style='padding:8px; border-bottom:1px solid #eee;'>Slot No.</th>
+                        <th style='padding:8px; border-bottom:1px solid #eee;'>Event ID</th>
+                        <th style='padding:8px; border-bottom:1px solid #eee;'>Event Name</th>
+                    </tr>
             """, ticketCounter++, qrCodeUrl, ticketUuid, ticketUuid));
 
-            ticketsHtml.append("<tr><th style='padding:8px; border-bottom:1px solid #eee;'>Slot No.</th><th style='padding:8px; border-bottom:1px solid #eee;'>Event ID</th></tr>");
             for (Map.Entry<Integer, Integer> slotEntry : ticketDetails.entrySet()) {
-                ticketsHtml.append(String.format("<tr><td style='padding:8px; border-bottom:1px solid #eee;'>%d</td><td style='padding:8px; border-bottom:1px solid #eee;'>%d</td></tr>", slotEntry.getKey(), slotEntry.getValue()));
+                int slotNo = slotEntry.getKey();
+                int eventId = slotEntry.getValue();
+                String eventName = null;
+
+                try {
+                    // Fetch event name using EventMapper
+                    eventName = eventMapper.findEventNameById(eventId);
+                } catch (Exception e) {
+                    eventName = "Unknown Event";
+                }
+
+                ticketsHtml.append(String.format(
+                        "<tr><td style='padding:8px; border-bottom:1px solid #eee;'>%d</td>"
+                                + "<td style='padding:8px; border-bottom:1px solid #eee;'>%d</td>"
+                                + "<td style='padding:8px; border-bottom:1px solid #eee;'>%s</td></tr>",
+                        slotNo, eventId, eventName
+                ));
             }
             ticketsHtml.append("</table></div>");
         }
-
 
         return String.format("""
 <div style='background:linear-gradient(135deg,#f0f5ff 0%%,#ffffff 100%%);padding:40px 0;font-family:Segoe UI,Arial,sans-serif;'>
@@ -128,7 +149,10 @@ public class AsyncEmailSenderUtil {
         %s
 
         <p style='color:#999;font-size:12px;text-align:center;margin-top:30px;'>
-            Sent by kPaymentPipeline &copy; 2025. Please present the QR code at the event.
+            Sent by <strong>kPaymentPipeline</strong>, built by 
+            <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
+                Saipranav
+            </a> &copy; 2025. Please present the QR code at the event.
         </p>
     </div>
 </div>
@@ -141,6 +165,7 @@ public class AsyncEmailSenderUtil {
                 ticketsHtml
         );
     }
+
 
     /**
      * Fetches ticket UUIDs, generates QR codes, and sends the ticket email.

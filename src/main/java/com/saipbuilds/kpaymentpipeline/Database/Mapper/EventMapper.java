@@ -1,19 +1,12 @@
 package com.saipbuilds.kpaymentpipeline.Database.Mapper;
 
-import com.saipbuilds.kpaymentpipeline.Database.Entities.Event;
-import org.apache.ibatis.annotations.*;
-
-import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
 
 @Mapper
 public interface EventMapper {
 
-    @Insert("INSERT INTO events(name) VALUES(#{name})")
-    void insertEvent(Event event);
+    @Select("Select name from events where external_id = #{eventId}")
+    String findEventNameById(int eventId);
 
-    @Select("SELECT * FROM events WHERE id = #{id}")
-    Event findById(int id);
-
-    @Select("SELECT * FROM events")
-    List<Event> findAll();
 }
