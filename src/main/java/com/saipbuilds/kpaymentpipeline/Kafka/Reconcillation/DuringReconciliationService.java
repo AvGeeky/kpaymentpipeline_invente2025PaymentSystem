@@ -5,14 +5,13 @@ import com.saipbuilds.kpaymentpipeline.Database.Mapper.PassMapper;
 import com.saipbuilds.kpaymentpipeline.Database.Mapper.ReceiptMapper;
 import com.saipbuilds.kpaymentpipeline.Service.PaymentDatabaseServices;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
 
 @Service
 @Slf4j
-public class ReconciliationService {
+public class DuringReconciliationService {
     private final ReceiptMapper receiptMapper;
     PaymentDatabaseServices paymentDatabaseServices;
 
@@ -20,7 +19,7 @@ public class ReconciliationService {
     Integer amountPerPass = Integer.parseInt(amountString != null ? amountString : "300");
     private final PassMapper passMapper;
 
-    public ReconciliationService(PassMapper passMapper, PaymentDatabaseServices paymentDatabaseServices, ReceiptMapper receiptMapper) {
+    public DuringReconciliationService(PassMapper passMapper, PaymentDatabaseServices paymentDatabaseServices, ReceiptMapper receiptMapper) {
         this.passMapper = passMapper;
         this.paymentDatabaseServices=paymentDatabaseServices;
         this.receiptMapper = receiptMapper;
@@ -41,7 +40,7 @@ public class ReconciliationService {
             return false;
         }
         for(Map<Integer,Integer> pass : event.getEventBookingDetails()){
-            String uuid = paymentDatabaseServices.insertOnePassAndReturnUUID(event.getEmailID(), event.getPaymentID());
+            String uuid = paymentDatabaseServices.insertOnePassAndReturnUUID(event.getEmailID(), event.getPaymentID(), event.getType());
             paymentDatabaseServices.insertIntoSlots(uuid,pass);
         }
         receiptMapper.markPassGeneratedTrue(event.getPaymentID());

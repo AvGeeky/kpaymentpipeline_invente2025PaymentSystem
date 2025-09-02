@@ -1,15 +1,10 @@
 package com.saipbuilds.kpaymentpipeline.Service;
 
+import com.saipbuilds.kpaymentpipeline.DTO.HackathonPaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.ReceiptReceivedEvent;
-import com.saipbuilds.kpaymentpipeline.Database.Entities.Pass;
-import com.saipbuilds.kpaymentpipeline.Database.Entities.Receipt;
-import com.saipbuilds.kpaymentpipeline.Database.Entities.Slot;
-import com.saipbuilds.kpaymentpipeline.Database.Entities.User;
-import com.saipbuilds.kpaymentpipeline.Database.Mapper.PassMapper;
-import com.saipbuilds.kpaymentpipeline.Database.Mapper.ReceiptMapper;
-import com.saipbuilds.kpaymentpipeline.Database.Mapper.SlotMapper;
-import com.saipbuilds.kpaymentpipeline.Database.Mapper.UserMapper;
+import com.saipbuilds.kpaymentpipeline.Database.Entities.*;
+import com.saipbuilds.kpaymentpipeline.Database.Mapper.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,16 +22,26 @@ public class PaymentDatabaseServices {
     private final ReceiptMapper receiptMapper;
     private final PassMapper passMapper;
     private final SlotMapper slotMapper;
-    UUID namespace = UUID.fromString("1b402880-873b-449d-8501-155e8283b4b8");
+    private final HackPassMapper hackPassMapper;
+    private final HackRegDetailsMapper hackRegDetailsMapper;
+
     @Autowired
-    public PaymentDatabaseServices(UserMapper userMapper, ReceiptMapper receiptMapper, PassMapper passMapper, SlotMapper slotMapper) {
+    public PaymentDatabaseServices(UserMapper userMapper, ReceiptMapper receiptMapper, PassMapper passMapper, SlotMapper slotMapper, HackPassMapper hackPassMapper, HackRegDetailsMapper hackRegDetailsMapper) {
         this.userMapper = userMapper;
         this.receiptMapper = receiptMapper;
         this.passMapper = passMapper;
         this.slotMapper = slotMapper;
+        this.hackPassMapper = hackPassMapper;
+        this.hackRegDetailsMapper = hackRegDetailsMapper;
     }
-    private String generateUUID5(String paymentID){
+    private String generateUUID5(String type){
         UUID uuid = UUID.randomUUID();
+        if (type == null) {
+            return uuid.toString();
+        }
+        if (type.equalsIgnoreCase("w") || type.equalsIgnoreCase("t") || type.equalsIgnoreCase("n") || type.equalsIgnoreCase("h")){
+            return uuid.toString()+"$"+type.toLowerCase();
+        }
         return uuid.toString();
     }
 
@@ -55,8 +60,8 @@ public class PaymentDatabaseServices {
         receiptMapper.insertReceipt(receipt);
         log.info(" S2: Inserted Into Database for Receipt: {}", receipt.getEmail());
     }
-    public String insertOnePassAndReturnUUID(String emailId, String paymentID) {
-        String uuid = generateUUID5(paymentID);
+    public String insertOnePassAndReturnUUID(String emailId, String paymentID, String type) {
+        String uuid = generateUUID5(type);
         Pass pass = new Pass(uuid, emailId, paymentID, false, Instant.now().toString());
         passMapper.insertPass(pass);
         log.info("Inserted pass for user: {}", emailId);
@@ -73,4 +78,49 @@ public class PaymentDatabaseServices {
     }
 
 
+    public void insertHackDetails(HackathonPaymentReceivedEvent event) {
+        String teamId = generateUUID5("h");
+        log.info("Inserting hackathon details for team_id={} leader={}", teamId, event.getLeader_email());
+        User user = new User(event.getLeader_email(), event.getMember_names().get(1), event.getMember_phones().get(1), Instant.now().toString());
+        userMapper.insertUser(user);
+
+        // ---- 1. Insert into hack_passes ----
+        HackPass pass = new HackPass(
+                teamId,
+                event.getLeader_email(),
+                event.getTeam_name(),
+                event.getTrack(),
+                event.getPaymentID(),
+                false, // ticketIssued defaults to false
+                Instant.now()
+        );
+        hackPassMapper.insertHackPass(pass);
+
+        // ---- 2. Insert each team member into hack_reg_details ----
+        Map<Integer, String> emails = event.getMember_emails();
+        Map<Integer, String> names = event.getMember_names();
+        Map<Integer, String> institutions = event.getMember_institutions();
+        Map<Integer, String> phones = event.getMember_phones();
+
+        if (emails != null) {
+            for (Map.Entry<Integer, String> entry : emails.entrySet()) {
+                Integer idx = entry.getKey();
+                String email = entry.getValue();
+
+                HackRegDetail member = new HackRegDetail(
+                        teamId,
+                        email,
+                        names != null ? names.get(idx) : null,
+                        institutions != null ? institutions.get(idx) : null,
+                        Instant.now(),
+                        phones != null ? phones.get(idx) : null
+                );
+
+                hackRegDetailsMapper.insertHackRegDetail(member);
+            }
+        }
+
+        log.info("Inserted hackathon team={} with {} members", event.getTeam_name(),
+                emails != null ? emails.size() : 0);
+    }
 }

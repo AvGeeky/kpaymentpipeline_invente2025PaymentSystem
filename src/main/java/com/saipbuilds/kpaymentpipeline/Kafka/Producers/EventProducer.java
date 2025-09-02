@@ -1,5 +1,6 @@
 package com.saipbuilds.kpaymentpipeline.Kafka.Producers;
 
+import com.saipbuilds.kpaymentpipeline.DTO.HackathonPaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.ReceiptReceivedEvent;
 import lombok.RequiredArgsConstructor;
@@ -20,10 +21,13 @@ public class EventProducer {
     @Value("${kafka.topic.email-receipt}")
     private String RECEIPT_TOPIC;
 
+    @Value("${kafka.topic.hackathon-payment_received}")
+    private String hackathonPaymentReceivedTopic;
+
 
     public void sendPaymentEvent(PaymentReceivedEvent event) {
         try {
-            kafkaTemplate.send(PAYMENT_TOPIC, event.getEmailID(), event);
+            kafkaTemplate.send(PAYMENT_TOPIC, event.getPaymentID(), event);
             log.info(" S1 PaymentReceivedEvent published for user [{}]", event.getEmailID());
         } catch (Exception e) {
             log.error("Failed to publish PaymentReceivedEvent for [{}]: {}", event.getEmailID(), e.getMessage(), e);
@@ -38,5 +42,16 @@ public class EventProducer {
             log.error("Failed to publish ReceiptReceivedEvent for [{}]: {}", event.getPaymentID(), e.getMessage(), e);
         }
     }
+
+    public void sendHackathonPaymentReceivedTopic( HackathonPaymentReceivedEvent event) {
+        try {
+            kafkaTemplate.send(hackathonPaymentReceivedTopic, event.getPaymentID(), event);
+            log.info(" S1.B HackathonPaymentReceivedEvent published for paymentID [{}]", event.getPaymentID());
+        } catch (Exception e) {
+            log.error("Failed to publish ReceiptReceivedEvent for [{}]: {}", event.getPaymentID(), e.getMessage(), e);
+        }
+    }
+
+    //S3 DONE INSIDE RECONCILIATION STREAM
 }
 

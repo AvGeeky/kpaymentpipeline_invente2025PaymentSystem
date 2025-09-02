@@ -21,4 +21,5 @@ public class ReconciledEvent {
     private String amount;
     private String createdAt;
     private List<Map<Integer,Integer>> eventBookingDetails;
+    private String type;
 }

@@ -1,6 +1,7 @@
 package com.saipbuilds.kpaymentpipeline.TicketSender;
 
 
+import com.saipbuilds.kpaymentpipeline.DTO.HackathonReconciledEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.ReconciledEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.SlotDetail;
 import com.saipbuilds.kpaymentpipeline.Database.Mapper.PassMapper;
@@ -19,7 +20,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.LoggerFactory;
 // AsyncEmailSenderUtil is a functions class for sending emails asynchronously
 @Service
 public class AsyncEmailSenderUtil {
@@ -211,4 +213,103 @@ public class AsyncEmailSenderUtil {
             }
         }
     }
+
+
+    private String generateHackathonTicketHtml(HackathonReconciledEvent event, List<String> ticketUuids) {
+        StringBuilder membersHtml = new StringBuilder();
+
+        if (event.getMember_names() != null) {
+            for (Integer idx : event.getMember_names().keySet()) {
+                membersHtml.append(String.format(
+                        "<tr>" +
+                                "<td>%s</td>" +
+                                "<td>%s</td>" +
+                                "<td>%s</td>" +
+                                "<td>%s</td>" +
+                                "</tr>",
+                        event.getMember_names().get(idx),
+                        event.getMember_emails().get(idx),
+                        event.getMember_institutions().get(idx),
+                        event.getMember_phones().get(idx)
+                ));
+            }
+        }
+
+        // Only one QR for the team (use first element if multiple exist)
+        String qrCodeUrl = (ticketUuids != null && !ticketUuids.isEmpty())
+                ? "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + ticketUuids.get(0)
+                : "";
+
+        return String.format("""
+            <div style='font-family:Segoe UI,Arial,sans-serif; background:#f9f9f9; padding:20px;'>
+                <h2 style='color:#0055A4;'>Hackathon Registration Confirmed</h2>
+                <p>Hello <b>%s</b>, your team <b>%s</b> has successfully registered for the hackathon.</p>
+                <p><strong>Track:</strong> %s</p>
+                <p><strong>Payment ID:</strong> %s</p>
+                <p><strong>Payment Method:</strong> %s</p>
+                <p><strong>Amount:</strong> %s</p>
+                <p><strong>Date:</strong> %s</p>
+                
+                <div style='text-align:center; margin:20px 0;'>
+                    <p><strong>Team Ticket QR Code:</strong></p>
+                    %s
+                </div>
+                
+                <h3>Team Members:</h3>
+                <table style='width:100%%; border-collapse:collapse;' border='1'>
+                    <tr><th>Name</th><th>Email</th><th>Institution</th><th>Phone</th></tr>
+                    %s
+                </table>
+                
+                <p style='font-size:12px; color:#777; margin-top:20px;'>Please present this QR code at the event check-in desk.</p>
+            </div>
+            """,
+                event.getLeader_email(),
+                event.getTeam_name(),
+                event.getTrack(),
+                event.getPaymentID(),
+                event.getMethod(),
+                event.getAmount(),
+                event.getPaidOn(),
+                (qrCodeUrl.isEmpty() ? "" : "<img src='" + qrCodeUrl + "' alt='Team QR Code' width='220' height='220'>"),
+                membersHtml
+        );
+    }
+
+
+    @Async
+    public void sendHackathonTicketEmail(String recipient, HackathonReconciledEvent event, List<String> ticketUuids) {
+        for (int i = 0; i < MAX_ATTEMPTS; i++) {
+            if (mailTransport == null || !mailTransport.isConnected()) {
+                initEmailProperties();
+            }
+
+            String username = System.getenv("MAIL_ID");
+
+            try {
+                MimeMessage message = new MimeMessage(session);
+                message.setFrom(new InternetAddress(username, "Hackathon Team Tickets"));
+                message.addRecipient(Message.RecipientType.TO, new InternetAddress(recipient));
+                message.setSubject("Hackathon Ticket Confirmation - Team: " + event.getTeam_name());
+
+                // Generate HTML including QR codes
+                String htmlContent = generateHackathonTicketHtml(event, ticketUuids);
+                message.setContent(htmlContent, "text/html; charset=utf-8");
+
+                Transport.send(message);
+                org.slf4j.LoggerFactory.getLogger(emailUtil.class)
+                        .info("Successfully sent hackathon ticket email to {}", recipient);
+                break;
+            } catch (MessagingException | UnsupportedEncodingException e) {
+                org.slf4j.LoggerFactory.getLogger(emailUtil.class)
+                        .error("Failed to send hackathon ticket email to {}", recipient, e);
+                try {
+                    Thread.sleep((long) (Math.pow(2, i) * 2000));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
 }

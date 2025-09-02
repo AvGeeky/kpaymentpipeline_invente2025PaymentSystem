@@ -12,6 +12,7 @@ import org.apache.kafka.streams.kstream.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.kafka.support.serializer.JsonSerde;
 
 @Configuration
@@ -19,7 +20,7 @@ import org.springframework.kafka.support.serializer.JsonSerde;
 @RequiredArgsConstructor
 public class ReconciliationStream {
 
-    private final ReconciliationService reconciliationService;
+    private final DuringReconciliationService duringReconciliationService;
 
     @Value("${kafka.topic.payment-received}")
     private String paymentReceivedTopic;
@@ -31,7 +32,7 @@ public class ReconciliationStream {
     private String paymentReconciledTopic;
 
     @Bean
-    public KStream<String, PaymentReceivedEvent> reconciliationPipeline(StreamsBuilder builder) {
+    public KStream<String, PaymentReceivedEvent> normalReconciliationPipeline(StreamsBuilder builder) {
 
         // ---- Payment Stream ----
         KStream<String, PaymentReceivedEvent> paymentStream = builder.stream(
@@ -47,14 +48,14 @@ public class ReconciliationStream {
 
         // ---- Re-key both streams by paymentID ----
         KTable<String, PaymentReceivedEvent> paymentsByPaymentId = paymentStream
-                .selectKey((k, v) -> v.getPaymentID())   // ✅ Only by PaymentID
+                .selectKey((k, v) -> v.getPaymentID())   // Only by PaymentID
                 .toTable();
 
         KTable<String, ReceiptReceivedEvent> receiptsByPaymentId = receiptStream
-                .selectKey((k, v) -> v.getPaymentID())   // ✅ Only by PaymentID
+                .selectKey((k, v) -> v.getPaymentID())   //  Only by PaymentID
                 .toTable();
 
-// ---- Join streams (by paymentID) → ReconciledEvent ----
+        // ---- Join streams (by paymentID) → ReconciledEvent ----
         KTable<String, ReconciledEvent> reconciled = paymentsByPaymentId.join(
                 receiptsByPaymentId,
                 (payment, receipt) -> {
@@ -71,12 +72,13 @@ public class ReconciliationStream {
                             true,
                             receipt.getAmount(),
                             payment.getCreatedAt(),
-                            payment.getEventBookingDetails()
+                            payment.getEventBookingDetails(),
+                            payment.getType()
                     );
 
                     // Persist into DB
                     try {
-                        boolean b = reconciliationService.handleReconciliation(event);
+                        boolean b = duringReconciliationService.handleReconciliation(event);
                         return b ? event : null;
                     } catch (Exception e) {
                         log.error(" error while reconciling paymentId={}", payment.getPaymentID(), e);

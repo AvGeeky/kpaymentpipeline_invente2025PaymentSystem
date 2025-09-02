@@ -1,6 +1,7 @@
 package com.saipbuilds.kpaymentpipeline.Kafka.config;
 //To configure Kafka consumer to read JSON messages and convert them to Java objects
 
+import com.saipbuilds.kpaymentpipeline.DTO.HackathonPaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.ReceiptReceivedEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -47,6 +48,32 @@ public class KafkaConsumerConfig {
         factory.setConsumerFactory(paymentConsumerFactory());
         return factory;
     }
+
+
+    // ---- hackathon Payment Consumer ----
+    @Bean
+    public ConsumerFactory<String, HackathonPaymentReceivedEvent> hackPaymentConsumerFactory() {
+        JsonDeserializer<HackathonPaymentReceivedEvent> deserializer =
+                new JsonDeserializer<>(HackathonPaymentReceivedEvent.class).ignoreTypeHeaders();
+        deserializer.addTrustedPackages("com.saipbuilds.kpaymentpipeline.DTO");
+
+        return new DefaultKafkaConsumerFactory<>(
+                baseProps("payment-verif-group"),
+                new StringDeserializer(),
+                deserializer
+        );
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, HackathonPaymentReceivedEvent> hackPaymentKafkaListenerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, HackathonPaymentReceivedEvent> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+
+        factory.setConsumerFactory(hackPaymentConsumerFactory()); // <-- Use the correct factory
+        return factory;
+    }
+
+
 
     // ---- Receipt Consumer ----
     @Bean

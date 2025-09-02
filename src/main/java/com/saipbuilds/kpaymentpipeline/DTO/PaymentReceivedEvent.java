@@ -19,6 +19,7 @@ public class PaymentReceivedEvent {
     private String phoneNumber;
     private String createdAt;
     private List<Map<Integer,Integer>> eventBookingDetails;
+    private String type;
 }
 
 

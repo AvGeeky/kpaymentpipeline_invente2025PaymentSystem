@@ -2,8 +2,10 @@ package com.saipbuilds.kpaymentpipeline.Controller;
 
 
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
+import com.saipbuilds.kpaymentpipeline.Kafka.Producers.EventProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentController {
-
+    private final EventProducer eventProducer;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${kafka.topic.payment-received}")
@@ -22,7 +24,7 @@ public class PaymentController {
     @PostMapping
     public String publishPayment(@RequestBody PaymentReceivedEvent event) {
         log.info("📥 Received Payment POST: {}", event);
-        kafkaTemplate.send(paymentTopic, event.getEmailID(), event);
+        eventProducer.sendPaymentEvent(event);
         return "✅ Payment event produced to Kafka";
     }
 }

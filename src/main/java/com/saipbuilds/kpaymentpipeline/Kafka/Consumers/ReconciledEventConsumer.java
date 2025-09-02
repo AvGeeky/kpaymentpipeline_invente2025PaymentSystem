@@ -42,7 +42,7 @@ public class ReconciledEventConsumer {
             passMapper.markTicketIssued(s);
         }
 
-        // 🔹 Next steps:
+
         // 1. Update pass table → set ticketIssued=true
         // 2. Trigger ticket generation (PDF / QR code / etc.)
         // 3. Send ticket via email to user

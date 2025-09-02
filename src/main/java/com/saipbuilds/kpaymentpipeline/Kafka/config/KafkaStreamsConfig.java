@@ -12,37 +12,38 @@ import org.springframework.kafka.config.KafkaStreamsConfiguration;
 import org.springframework.kafka.support.serializer.JsonSerde;
 
 import java.util.HashMap;
-import java.util.Map;
-
-@Configuration
+import java.util.Map;@Configuration
 @EnableKafkaStreams
 public class KafkaStreamsConfig {
 
-    // Inject the bootstrap server addresses from application.yml
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
+    // 1️⃣ Default config (normal reconciliation)
     @Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
-    public KafkaStreamsConfiguration kStreamsConfigs() {
+    public KafkaStreamsConfiguration reconciliationConfig() {
         Map<String, Object> props = new HashMap<>();
-
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "reconciliation-service");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-
-        // Default SerDes for keys and values
-        // Key is a String, Value will be a JSON object
         props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, JsonSerde.class);
-
-        // Start reading from the beginning of the topic
+        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        // Local directory for state stores (e.g., for joins)
-        props.put(StreamsConfig.STATE_DIR_CONFIG, "kstream-state");
-
-        // Enable Exactly Once Semantics (EOS) for transactional integrity
+        props.put(StreamsConfig.STATE_DIR_CONFIG, "kstream-state/reconciliation");
         props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
+        return new KafkaStreamsConfiguration(props);
+    }
 
-        // Return the correct configuration object for Spring
+    // 2️⃣ Extra config (hackathon reconciliation)
+    @Bean(name = "hackathonKafkaStreamsConfig")
+    public KafkaStreamsConfiguration hackathonConfig() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "hackathon-reconciliation-service");
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+        props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(StreamsConfig.STATE_DIR_CONFIG, "kstream-state/hackathon");
+        props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
         return new KafkaStreamsConfiguration(props);
     }
 }

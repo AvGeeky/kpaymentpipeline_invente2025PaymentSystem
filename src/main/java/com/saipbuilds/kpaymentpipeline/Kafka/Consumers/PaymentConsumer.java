@@ -1,6 +1,6 @@
 package com.saipbuilds.kpaymentpipeline.Kafka.Consumers;
 
-import com.saipbuilds.kpaymentpipeline.DTO.ReceiptReceivedEvent;
+import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.Service.PaymentDatabaseServices;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,20 +10,20 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class PaymentConsumer {
-    private final PaymentDatabaseServices paymentDatabaseServices;
-
+    PaymentDatabaseServices paymentDatabaseServices;
     @Autowired
     PaymentConsumer(PaymentDatabaseServices paymentDatabaseServices) {
         this.paymentDatabaseServices = paymentDatabaseServices;
     }
-    @KafkaListener(
-            topics = "${kafka.topic.email-receipt}",
-            groupId = "receipt-verif-group",
-            containerFactory = "receiptKafkaListenerFactory"
-    )
-    public void consumeReceipt(ReceiptReceivedEvent event) {
-        log.info(" S2 Consumed ReceiptReceivedEvent: {}", event);
-        paymentDatabaseServices.insertReceipt(event);
 
+    @KafkaListener(
+            topics = "${kafka.topic.payment-received}",
+            groupId = "payment-verif-group",
+            containerFactory = "paymentKafkaListenerFactory"
+    )
+    public void consumePayment(PaymentReceivedEvent event) {
+        log.info(" S1 Consumed PaymentReceivedEvent: {}", event);
+        paymentDatabaseServices.insertDetails(event);
     }
 }
+

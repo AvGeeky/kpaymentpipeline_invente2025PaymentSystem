@@ -1,9 +1,11 @@
 package com.saipbuilds.kpaymentpipeline.TicketSender;
 
+import com.saipbuilds.kpaymentpipeline.DTO.HackathonReconciledEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.ReconciledEvent;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -26,5 +28,8 @@ public class emailUtil {
      */
     public void sendTicketPurchaseMail(String mail, ReconciledEvent details) {
         asyncEmailSender.sendTicketEmail(mail, details);
+    }
+    public void sendHackathonTicketMail(String recipient, HackathonReconciledEvent details, List<String> ticketUuids) {
+        asyncEmailSender.sendHackathonTicketEmail(recipient, details, ticketUuids);
     }
 }
