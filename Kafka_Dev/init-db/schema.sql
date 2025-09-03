@@ -40,6 +40,7 @@ CREATE TABLE events (
                         name TEXT NOT NULL,
                         department_id INT REFERENCES departments(id),
                         event_type TEXT NOT NULL DEFAULT 'technical',
+                        cost DECIMAL(10,2) DEFAULT NULL,
                         registrations INT DEFAULT 0,
                         created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -103,6 +104,12 @@ CREATE TABLE hack_reg_details (
 
                                   PRIMARY KEY (team_id, email),
                                   CONSTRAINT hack_reg_details_team_fk FOREIGN KEY (team_id) REFERENCES hack_passes(team_id) ON DELETE CASCADE
+);
+
+CREATE TABLE track(
+    team_id TEXT PRIMARY KEY,
+    domain_name VARCHAR(100) UNIQUE NOT NULL,
+    problem_statement TEXT NOT NULL
 );
 
 -- Indexes

@@ -85,6 +85,18 @@ public class PaymentDatabaseServices {
     public void insertHackDetailsS3(HackathonReconciledEvent event) {
         String teamId = generateUUID5("h");
         log.info("Inserting hackathon details for team_id={} leader={}", teamId, event.getLeader_email());
+        String input = event.getTrack();
+        String[] parts = input.split("\\$");
+        boolean isSoftware = false;
+        String track = parts[0];
+        String domain = null;
+        String prob_stat = null;
+        if ("Software".equalsIgnoreCase(track) && parts.length == 3) {
+            isSoftware = true;
+            domain = parts[1];
+            prob_stat = parts[2];
+            hackRegDetailsMapper.insertTrack(teamId, domain, prob_stat);
+        }
 
 
         // ---- 1. Insert into hack_passes ----
@@ -92,7 +104,7 @@ public class PaymentDatabaseServices {
                 teamId,
                 event.getLeader_email(),
                 event.getTeam_name(),
-                event.getTrack(),
+                track,
                 event.getPaymentID(),
                 false, // ticketIssued defaults to false
                 Instant.now()

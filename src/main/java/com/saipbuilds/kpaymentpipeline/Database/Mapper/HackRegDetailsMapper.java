@@ -16,4 +16,7 @@ public interface HackRegDetailsMapper {
     // Fetch all members for a team
     @Select("SELECT * FROM hack_reg_details WHERE team_id = #{teamId}")
     List<HackRegDetail> findByTeamId(String teamId);
+
+    @Insert("INSERT INTO track(team_id, domain_name, problem_statement) VALUES (#{teamId}, #{domainName}, #{problemStatement})")
+    void insertTrack(@Param("teamId") String teamId, @Param("domainName") String domainName, @Param("problemStatement") String problemStatement);
 }
