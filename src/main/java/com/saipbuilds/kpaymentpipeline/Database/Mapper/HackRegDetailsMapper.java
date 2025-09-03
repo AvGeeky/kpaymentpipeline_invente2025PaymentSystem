@@ -9,8 +9,8 @@ import java.util.List;
 public interface HackRegDetailsMapper {
 
     // Insert new team member row
-    @Insert("INSERT INTO hack_reg_details(team_id, email, full_name, institution, created_at, phone_number) " +
-            "VALUES(#{teamId}, #{email}, #{fullName}, #{institution}, now(), #{phoneNumber})")
+    @Insert("INSERT INTO hack_reg_details(team_id, email, full_name, institution, created_at, phone_number, gender, department, year_of_study) " +
+            "VALUES(#{teamId}, #{email}, #{fullName}, #{institution}, now(), #{phoneNumber}, #{gender}, #{Department}, #{yearOfStudy})")
     void insertHackRegDetail(HackRegDetail hackRegDetail);
 
     // Fetch all members for a team

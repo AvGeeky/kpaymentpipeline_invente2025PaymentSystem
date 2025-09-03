@@ -78,6 +78,9 @@ public class HackReconciliationStream {
                             .amount(receipt.getAmount())
                             .phoneNumber(receipt.getPhoneNumber())
                             .reconciled(true)
+                            .member_gender(payment.getMember_gender())
+                            .member_department((payment.getMember_department()))
+                            .member_yearofstudy((payment.getMember_yearofstudy()))
                             .build();
 
                     // Persist into DB

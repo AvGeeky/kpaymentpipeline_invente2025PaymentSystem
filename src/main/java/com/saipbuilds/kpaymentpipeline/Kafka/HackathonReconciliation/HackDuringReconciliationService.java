@@ -35,7 +35,8 @@ public class HackDuringReconciliationService {
             return false;
         }
         int amountBD = (int) Double.parseDouble(event.getAmount());
-        if (amountBD!=amount){
+        int teamsize = event.getMember_names().size();
+        if (amountBD!=(amount*teamsize)){
             log.warn(" Reconciliation skipped: Incorrect amount for paymentID={} email={}",
                     event.getPaymentID(), event.getEmailID());
             return false;
@@ -50,6 +51,7 @@ public class HackDuringReconciliationService {
 
 
         receiptMapper.markPassGeneratedTrue(event.getPaymentID());
+        event.setReconciled(true);
 
 
         log.info(" S3.B Reconciled email={} paymentId={} reconciled={}",

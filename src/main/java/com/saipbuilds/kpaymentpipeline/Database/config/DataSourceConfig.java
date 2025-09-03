@@ -19,7 +19,7 @@ public class DataSourceConfig {
         // We are using the IP address 127.0.0.1 to be more explicit
         // and avoid potential conflicts with other services running on 'localhost'.
         dataSourceBuilder.url("jdbc:postgresql://127.0.0.1:5432/paymentdb??currentSchema=public&stringtype=unspecified&options=-c%20TimeZone=Asia/Kolkata");
-
+//CHECK DURING DOCKERIZING
         dataSourceBuilder.username("postgres");
         dataSourceBuilder.password("postgres");
         return dataSourceBuilder.build();

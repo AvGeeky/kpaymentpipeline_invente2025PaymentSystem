@@ -16,4 +16,7 @@ public class HackRegDetail {
     private String institution;
     private Instant createdAt;
     private String phoneNumber;
+    private String gender;
+    private String Department;
+    private String yearOfStudy;
 }

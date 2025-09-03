@@ -29,6 +29,7 @@ import static com.saipbuilds.kpaymentpipeline.Email.EmailParser.safeGetMessageId
 
 @Service
 public class EmailReceiverService {
+    private ScheduledFuture<?> sweepFuture;
     private static final Logger log = LoggerFactory.getLogger(EmailReceiverService.class);
 
     private final EmailProperties props;
@@ -331,8 +332,9 @@ public class EmailReceiverService {
 
     //run a scheduler event to sweep unseen messages every one hour
     private void scheduleSweep() {
-        log.warn("Scheduling Redis-based unseen message sweep started");
-        sweepScheduler.scheduleAtFixedRate(() -> {
+        if (sweepFuture != null && !sweepFuture.isDone()) return; // already scheduled
+        log.warn("Scheduling Redis-based unseen message sweep started !!!@!!!");
+        sweepFuture = sweepScheduler.scheduleAtFixedRate(() -> {
             try {
                 if (inbox != null && inbox.isOpen()) {
                     log.debug("Running Redis-based unseen sweep (headers only)...");

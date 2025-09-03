@@ -14,8 +14,8 @@ public interface HackPassMapper {
     void insertHackPass(HackPass hackPass);
 
     // Update ticket_issued to true
-    @Update("UPDATE hack_passes SET ticket_issued = true WHERE team_id = #{teamId}")
-    void markTicketIssued(String teamId);
+    @Update("UPDATE hack_passes SET ticket_issued = true WHERE payment_id = #{paymentID}")
+    void markTicketIssued(String paymentID);
 
     // Check if ticket_issued is true, or record doesn’t exist
     @Select("SELECT ticket_issued FROM hack_passes WHERE team_id = #{teamId}")
@@ -23,4 +23,7 @@ public interface HackPassMapper {
 
     @Select("SELECT team_id FROM hack_passes WHERE payment_id = #{paymentId}")
     List<String> findTeamIdByPaymentId(String paymentId);
+
+    @Select("SELECT count(*) FROM hack_passes")
+    Integer findNumberOfRegistrations();
 }

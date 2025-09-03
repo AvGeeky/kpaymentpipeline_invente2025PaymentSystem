@@ -95,6 +95,11 @@ CREATE TABLE hack_reg_details (
                                   institution     VARCHAR(150),                  --  institution
                                   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                                   phone_number    VARCHAR(20),
+                                    gender VARCHAR(10),
+                                    department VARCHAR(100),
+                                    year_of_study varchar(10),
+
+
 
                                   PRIMARY KEY (team_id, email),
                                   CONSTRAINT hack_reg_details_team_fk FOREIGN KEY (team_id) REFERENCES hack_passes(team_id) ON DELETE CASCADE

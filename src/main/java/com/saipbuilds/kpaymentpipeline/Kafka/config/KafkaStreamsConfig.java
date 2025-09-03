@@ -19,7 +19,7 @@ public class KafkaStreamsConfig {
     @Value("${spring.kafka.bootstrap-servers}")
     private String bootstrapServers;
 
-    // 1️⃣ Default config (normal reconciliation)
+    // normal reconciliation
     @Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
     public KafkaStreamsConfiguration reconciliationConfig() {
         Map<String, Object> props = new HashMap<>();
@@ -33,7 +33,7 @@ public class KafkaStreamsConfig {
         return new KafkaStreamsConfiguration(props);
     }
 
-    // 2️⃣ Extra config (hackathon reconciliation)
+    // hackathon reconciliation
     @Bean(name = "hackathonKafkaStreamsConfig")
     public KafkaStreamsConfiguration hackathonConfig() {
         Map<String, Object> props = new HashMap<>();

@@ -44,6 +44,7 @@ public class DuringReconciliationService {
             paymentDatabaseServices.insertIntoSlots(uuid,pass);
         }
         receiptMapper.markPassGeneratedTrue(event.getPaymentID());
+        event.setReconciled(true);
 
 
         log.info(" S3 Reconciled email={} paymentId={} reconciled={}",

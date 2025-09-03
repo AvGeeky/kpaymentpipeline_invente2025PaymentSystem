@@ -1,6 +1,7 @@
 package com.saipbuilds.kpaymentpipeline.Service;
 
 import com.saipbuilds.kpaymentpipeline.DTO.HackathonPaymentReceivedEvent;
+import com.saipbuilds.kpaymentpipeline.DTO.HackathonReconciledEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.ReceiptReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.Database.Entities.*;
@@ -77,12 +78,14 @@ public class PaymentDatabaseServices {
         log.info("Slots Inserted for passId: {}", pass);
     }
 
-
-    public void insertHackDetails(HackathonPaymentReceivedEvent event) {
-        String teamId = generateUUID5("h");
-        log.info("Inserting hackathon details for team_id={} leader={}", teamId, event.getLeader_email());
+    public void insertHackUserS1(HackathonPaymentReceivedEvent event) {
         User user = new User(event.getLeader_email(), event.getMember_names().get(1), event.getMember_phones().get(1), Instant.now().toString());
         userMapper.insertUser(user);
+    }
+    public void insertHackDetailsS3(HackathonReconciledEvent event) {
+        String teamId = generateUUID5("h");
+        log.info("Inserting hackathon details for team_id={} leader={}", teamId, event.getLeader_email());
+
 
         // ---- 1. Insert into hack_passes ----
         HackPass pass = new HackPass(
@@ -113,7 +116,11 @@ public class PaymentDatabaseServices {
                         names != null ? names.get(idx) : null,
                         institutions != null ? institutions.get(idx) : null,
                         Instant.now(),
-                        phones != null ? phones.get(idx) : null
+                        phones != null ? phones.get(idx) : null,
+                        event.getMember_gender().get(idx),
+                        event.getMember_department().get(idx),
+                        event.getMember_yearofstudy().get(idx)
+
                 );
 
                 hackRegDetailsMapper.insertHackRegDetail(member);

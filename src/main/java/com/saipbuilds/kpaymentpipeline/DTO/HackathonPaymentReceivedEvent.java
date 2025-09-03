@@ -25,6 +25,10 @@ public class HackathonPaymentReceivedEvent {
     private Map<Integer,String> member_institutions;
     private Map<Integer,String> member_phones;
 
+    private Map<Integer,String> member_gender;
+    private Map<Integer,String> member_department;
+    private Map<Integer,String> member_yearofstudy;
+
 }
 
 

@@ -4,6 +4,7 @@ import com.saipbuilds.kpaymentpipeline.DTO.HackathonReconciledEvent;
 import com.saipbuilds.kpaymentpipeline.DTO.ReconciledEvent;
 import com.saipbuilds.kpaymentpipeline.Database.Mapper.HackPassMapper;
 import com.saipbuilds.kpaymentpipeline.Database.Mapper.PassMapper;
+import com.saipbuilds.kpaymentpipeline.Service.PaymentDatabaseServices;
 import com.saipbuilds.kpaymentpipeline.TicketSender.emailUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,12 +19,14 @@ public class HackathonReconciledEventConsumer {
     private final emailUtil emailSender;
     private final PassMapper passMapper;
     private final HackPassMapper hackPassMapper;
+    private final PaymentDatabaseServices paymentDatabaseServices;
 
     @Autowired
-    public HackathonReconciledEventConsumer(emailUtil emailSender, PassMapper passMapper, HackPassMapper hackPassMapper) {
+    public HackathonReconciledEventConsumer(emailUtil emailSender, PassMapper passMapper, HackPassMapper hackPassMapper, PaymentDatabaseServices paymentDatabaseServices) {
         this.emailSender = emailSender;
         this.passMapper = passMapper;
         this.hackPassMapper = hackPassMapper;
+        this.paymentDatabaseServices = paymentDatabaseServices;
     }
 
     @KafkaListener(
@@ -32,21 +35,22 @@ public class HackathonReconciledEventConsumer {
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void consumeHackReconciledEvent(HackathonReconciledEvent event) {
-        List<String> ticketUuids = hackPassMapper.findTeamIdByPaymentId(event.getPaymentID());
+
         log.info(" S3.B Consumed HackathonReconciledEvent: email={} paymentId={} reconciled={}",
                 event.getEmailID(), event.getPaymentID(), event.isReconciled());
+        paymentDatabaseServices.insertHackDetailsS3(event);
         try {
-            emailSender.sendHackathonTicketMail(event.getEmailID(), event, ticketUuids);
+            emailSender.sendHackathonTicketMail(event.getEmailID(), event, hackPassMapper.findTeamIdByPaymentId(event.getPaymentID()));
             log.info("Ticket email queued for sending to {}", event.getEmailID());
         } catch (Exception e) {
             log.error("Failed to queue ticket email for paymentID={}", event.getPaymentID(), e);
         }
-        for(String s: ticketUuids){
-            log.info(" S4 Ticket generated with UUID: {}", s);
-            hackPassMapper.markTicketIssued(s);
-        }
 
-        // 🔹 Next steps:
+            log.info(" S4 Ticket generated with paymentID: {}", event.getPaymentID());
+            hackPassMapper.markTicketIssued(event.getPaymentID());
+
+
+
         // 1. Update pass table → set ticketIssued=true
         // 2. Trigger ticket generation (PDF / QR code / etc.)
         // 3. Send ticket via email to user

@@ -24,7 +24,7 @@ public class HackathonPaymentConsumer {
     )
     public void consumeHackPaymentReceived(HackathonPaymentReceivedEvent event) {
         log.info(" S1 Produced Hackathon Payment Received Event: {}", event.getTeam_name());
-        paymentDatabaseServices.insertHackDetails(event);
+        paymentDatabaseServices.insertHackUserS1(event);
         // Insert user details into DB
 
     }

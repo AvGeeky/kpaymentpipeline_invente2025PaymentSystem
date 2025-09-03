@@ -19,8 +19,9 @@ public interface ReceiptMapper {
     @Select("SELECT * FROM receipts")
     List<Receipt> findAll();
 
-    @Select("SELECT COALESCE(passGenerated, false) FROM receipts WHERE payment_id = #{paymentId}")
+    @Select("SELECT COALESCE((SELECT passGenerated FROM receipts WHERE payment_id = #{paymentId}), false)")
     boolean isPassGenerated(String paymentId);
+
 
     @Update("UPDATE receipts SET passGenerated = TRUE WHERE payment_id = #{paymentId}")
     void markPassGeneratedTrue(String paymentId);
