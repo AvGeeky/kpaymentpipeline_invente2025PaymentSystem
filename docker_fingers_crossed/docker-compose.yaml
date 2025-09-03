@@ -1,0 +1,187 @@
+services:
+  # -----------------------
+  # Infrastructure Services
+  # -----------------------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.3
+    container_name: zookeeper-v1
+    networks: [backend]
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: kafka-v1
+    networks: [backend]
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "bash -lc 'echo > /dev/tcp/localhost/9092'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:15
+    container_name: postgres-v1
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: invente25
+      POSTGRES_USER: invente25
+      POSTGRES_PASSWORD: invente25pw
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # This mounts your SQL scripts to initialize the 'invente25' database on first start.
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invente25 -d invente25"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    build:
+      context: ./redis
+      dockerfile: Dockerfile
+      args:
+        REDIS_PASSWORD: ${REDIS_PASSWORD}
+    container_name: payment-redis-v2
+    networks: [backend]
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    restart: always
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 3s
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui-v2
+    ports:
+      - "8081:8080"
+    networks: [backend]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # -----------------------
+  # Application Services
+  # -----------------------
+  payment-app:
+    image: saip2005/docx-app:1.0
+    container_name: payment-app-v2
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [backend]
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  admin-backend:
+    image: irfanakthar/invente25-admin-backend:v2
+    container_name: admin-backend-v1
+    ports:
+      - "4000:4000"
+    networks: [backend]
+    environment:
+      - PORT=4000
+      # Updated to point to the single 'postgres' service
+      - DATABASE_URL=postgres://invente25:invente25pw@postgres:5432/invente25
+      - JWT_SECRET=${JWT_SECRET}
+      # Updated to point to the 'payment-app' service for internal communication
+      - PAYMENT_SERVICE_URL=http://payment-app:8080/api/payment
+      - RECEIPT_SERVICE_URL=http://payment-app:8080/api/receipt
+      - MASTER_PW=itsmeirfan
+      - EVENTS_API_URL=https://ssnsnucinvente.com/api/events?pagination[pageSize]=140
+      - SYNC_EVENTS_ENABLED=true
+      - SYNC_EVENTS_CRON=*/2 * * * *
+      - secretKey=rjkgsigirgrlgrl123y4t5u6i7o8p0d
+    depends_on:
+      postgres:
+        condition: service_healthy
+      payment-app:
+        condition: service_started # Or service_healthy if it has a healthcheck
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  admin-frontend:
+    image: irfanakthar/invente25-admin-frontend:v1
+    container_name: admin-frontend-v1
+    ports:
+      - "3000:3000"
+    networks: [backend]
+    depends_on:
+      - admin-backend
+    environment:
+      # This remains localhost because the browser accesses it from the host machine
+      - VITE_API_URL=http://localhost:4000
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# -----------------------
+# Volumes & Networks
+# -----------------------
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  backend:
+    driver: bridge

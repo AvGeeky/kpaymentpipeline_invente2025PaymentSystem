@@ -1,15 +1,15 @@
 -- ==============================================
 -- DROP TABLES (reverse order to handle FKs safely)
 -- ==============================================
-DROP TABLE IF EXISTS track CASCADE;
-DROP TABLE IF EXISTS hack_reg_details CASCADE;
-DROP TABLE IF EXISTS hack_passes CASCADE;
-DROP TABLE IF EXISTS slots CASCADE;
-DROP TABLE IF EXISTS passes CASCADE;
-DROP TABLE IF EXISTS events CASCADE;
-DROP TABLE IF EXISTS departments CASCADE;
-DROP TABLE IF EXISTS receipts CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
+-- DROP TABLE IF EXISTS track CASCADE;
+-- DROP TABLE IF EXISTS hack_reg_details CASCADE;
+-- DROP TABLE IF EXISTS hack_passes CASCADE;
+-- DROP TABLE IF EXISTS slots CASCADE;
+-- DROP TABLE IF EXISTS passes CASCADE;
+-- DROP TABLE IF EXISTS events CASCADE;
+-- DROP TABLE IF EXISTS departments CASCADE;
+-- DROP TABLE IF EXISTS receipts CASCADE;
+-- DROP TABLE IF EXISTS users CASCADE;
 
 -- ==============================================
 -- USERS TABLE
@@ -120,7 +120,7 @@ CREATE TABLE hack_reg_details (
 -- ==============================================
 CREATE TABLE track (
                        team_id             TEXT PRIMARY KEY,
-                       domain_name         VARCHAR(100) UNIQUE NOT NULL,
+                       domain_name         VARCHAR(100) NOT NULL,
                        problem_statement   TEXT NOT NULL
 );
 
