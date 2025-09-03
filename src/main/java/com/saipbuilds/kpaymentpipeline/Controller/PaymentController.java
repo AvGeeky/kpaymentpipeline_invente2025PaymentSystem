@@ -1,13 +1,11 @@
 package com.saipbuilds.kpaymentpipeline.Controller;
 
-
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.Kafka.Producers.EventProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -15,16 +13,30 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentController {
+
     private final EventProducer eventProducer;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Value("${kafka.topic.payment-received}")
-    private String paymentTopic;
-
     @PostMapping
-    public String publishPayment(@RequestBody PaymentReceivedEvent event) {
-        log.info("📥 Received Payment POST: {}", event);
-        eventProducer.sendPaymentEvent(event);
-        return "✅ Payment event produced to Kafka";
+    public ResponseEntity<?> publishPayment(@RequestBody PaymentReceivedEvent event) {
+        try {
+            if (event.getEmailID() == null || event.getPaymentID() == null) {
+                return ResponseEntity.badRequest().body(
+                        new ApiResponse("Missing required fields", 400)
+                );
+            }
+
+            log.info("📥 Received Payment POST: {}", event);
+            eventProducer.sendPaymentEvent(event);
+
+            return ResponseEntity.status(201).body(
+                    new ApiResponse("Payment event produced to Kafka", 201)
+            );
+        } catch (Exception e) {
+            log.error("Error producing payment event", e);
+            return ResponseEntity.status(500).body(
+                    new ApiResponse("Failed to process payment event", 500)
+            );
+        }
     }
 }
