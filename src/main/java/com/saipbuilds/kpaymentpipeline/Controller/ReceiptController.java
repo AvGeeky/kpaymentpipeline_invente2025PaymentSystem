@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/receipt")
+@RequestMapping("/restricted/receipt")
 @RequiredArgsConstructor
 @Slf4j
 public class ReceiptController {
@@ -28,7 +28,7 @@ public class ReceiptController {
                 );
             }
 
-            log.info("📥 Received Receipt POST: {}", event);
+            log.info("Received Receipt POST: {}", event);
             kafkaTemplate.send(receiptTopic, event.getEmailID(), event);
 
             return ResponseEntity.status(201).body(

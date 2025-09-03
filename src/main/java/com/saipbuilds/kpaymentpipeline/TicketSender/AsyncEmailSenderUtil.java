@@ -132,33 +132,35 @@ public class AsyncEmailSenderUtil {
         }
 
         return String.format("""
-<div style='background:linear-gradient(135deg,#f0f5ff 0%%,#ffffff 100%%);padding:40px 0;font-family:Segoe UI,Arial,sans-serif;'>
-    <div style='max-width:600px;margin:auto;background:#FFFFFF;border-radius:18px;box-shadow:0 6px 30px rgba(0,0,0,0.1);padding:40px 32px;'>
-        <div style='text-align:center;margin-bottom:24px;'>
-            <h2 style='color:#0055A4;font-size:2.2rem;margin:0 0 8px 0;'>Your Tickets Are Here!</h2>
-            <p style='font-size:18px;color:#333;margin-bottom:20px;'>Hello %s, thank you for your purchase!</p>
-        </div>
-        
-        <div style="border-top:1px solid #ddd; border-bottom:1px solid #ddd; padding: 20px 0; margin-bottom:25px;">
-             <p style='font-size:16px;color:#333;margin-bottom:12px; line-height:1.6;'>
-                <strong>Payment ID:</strong> %s<br>
-                <strong>Amount Paid:</strong> %s<br>
-                <strong>Payment Method:</strong> %s<br>
-                <strong>Date:</strong> %s
-            </p>
-        </div>
-
-        %s
-
-        <p style='color:#999;font-size:12px;text-align:center;margin-top:30px;'>
-            Sent by <strong>kPaymentPipeline</strong>, built by 
-            <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
-                Saipranav
-            </a> &copy; 2025. Please present the QR code at the event.
-        </p>
-    </div>
-</div>
+                        <div style='background:linear-gradient(135deg,#f0f5ff 0%%,#ffffff 100%%);padding:40px 0;font-family:Segoe UI,Arial,sans-serif;'>
+                            <div style='max-width:600px;margin:auto;background:#FFFFFF;border-radius:18px;box-shadow:0 6px 30px rgba(0,0,0,0.1);padding:40px 32px;'>
+                                <img src="%s" alt="Event Logo" style="max-width:160px; margin-bottom:25px;">
+                                <div style='text-align:center;margin-bottom:24px;'>
+                                    <h2 style='color:#0055A4;font-size:2.2rem;margin:0 0 8px 0;'>Your Invente 2025 Tickets Are Here!</h2>
+                                    <p style='font-size:18px;color:#333;margin-bottom:20px;'>Hello %s, thank you for your purchase!</p>
+                                </div>
+                        
+                                <div style="border-top:1px solid #ddd; border-bottom:1px solid #ddd; padding: 20px 0; margin-bottom:25px;">
+                                     <p style='font-size:16px;color:#333;margin-bottom:12px; line-height:1.6;'>
+                                        <strong>Payment ID:</strong> %s<br>
+                                        <strong>Amount Paid:</strong> %s<br>
+                                        <strong>Payment Method:</strong> %s<br>
+                                        <strong>Date:</strong> %s
+                                    </p>
+                                </div>
+                        
+                                %s
+                        
+                                <p style='color:#999;font-size:12px;text-align:center;margin-top:30px;'>
+                                    Sent by <strong>kPaymentPipeline</strong>, built by\s
+                                    <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
+                                        Saipranav
+                                    </a> &copy; 2025. Please present the QR code at the event.
+                                </p>
+                            </div>
+                        </div>
 """,
+                "https://ssnsnucinvente.com/_next/image?url=%2Flogos%2Finvente.png&w=640&q=75",
                 event.getName(),
                 event.getPaymentID(),
                 event.getAmount(),
@@ -242,7 +244,8 @@ public class AsyncEmailSenderUtil {
 
         return String.format("""
             <div style='font-family:Segoe UI,Arial,sans-serif; background:#f9f9f9; padding:20px;'>
-                <h2 style='color:#0055A4;'>Hackathon Registration Confirmed</h2>
+            <img src="%s" alt="Event Logo" style="max-width:160px; margin-bottom:25px;">
+                <h2 style='color:#0055A4;'>Invente 2025 Hackathon Registration Confirmed!</h2>
                 <p>Hello <b>%s</b>, your team <b>%s</b> has successfully registered for the hackathon.</p>
                 <p><strong>Track:</strong> %s</p>
                 <p><strong>Payment ID:</strong> %s</p>
@@ -261,9 +264,15 @@ public class AsyncEmailSenderUtil {
                     %s
                 </table>
                 
-                <p style='font-size:12px; color:#777; margin-top:20px;'>Please present this QR code at the event check-in desk.</p>
+                 <p style='color:#999;font-size:12px;text-align:center;margin-top:30px;'>
+            Sent by <strong>kPaymentPipeline</strong>, built by 
+            <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
+                Saipranav
+            </a> &copy; 2025. Please present the QR code at the event.
+        </p>
             </div>
             """,
+                "https://ssnsnucinvente.com/_next/image?url=%2Flogos%2Finvente.png&w=640&q=75",
                 event.getLeader_email(),
                 event.getTeam_name(),
                 event.getTrack(),
