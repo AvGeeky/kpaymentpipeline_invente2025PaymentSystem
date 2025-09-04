@@ -53,11 +53,11 @@ public class PaymentDatabaseServices {
     }
     public void insertReceipt(ReceiptReceivedEvent rre){
         Receipt receipt = new Receipt(rre.getPaymentID(), rre.getPaidOn(), rre.getMethod(), rre.getEmailID(), rre.getPhoneNumber(), false, rre.getAmount());
-        User u = userMapper.findByEmail(rre.getEmailID());
-        if (u == null) {
-            log.warn("User with email {} not found." + rre.getEmailID());
-            return;
-        }
+//        User u = userMapper.findByEmail(rre.getEmailID());
+//        if (u == null) {
+//            log.warn("User with email {} not found." + rre.getEmailID());
+//            return;
+//        }
         receiptMapper.insertReceipt(receipt);
         log.info(" S2: Inserted Into Database for Receipt: {}", receipt.getEmail());
     }

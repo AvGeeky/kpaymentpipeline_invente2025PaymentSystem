@@ -30,7 +30,7 @@ CREATE TABLE events ( -- should contain all events, not just tech events
 
 CREATE TABLE receipts (
                           payment_id VARCHAR(100) PRIMARY KEY, -- from payment gateway (or uuid4 generated for cash payments)
-                          email TEXT REFERENCES users(email),
+                          email TEXT,
                           method VARCHAR(50), -- online or cash
                           phone VARCHAR(20),
                           amount DECIMAL(10,2) NOT NULL,
@@ -41,8 +41,8 @@ CREATE TABLE receipts (
 
 CREATE TABLE passes (
                         pass_id TEXT PRIMARY KEY, -- this is uuidv4 rn, gotta change to uuid7 later
-                        user_email TEXT REFERENCES users(email),
-                        payment_id VARCHAR(100) REFERENCES receipts(payment_id),
+                        user_email TEXT,
+                        payment_id VARCHAR(100),
                         ticket_issued BOOLEAN DEFAULT FALSE, -- whether qr code has been sent
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
