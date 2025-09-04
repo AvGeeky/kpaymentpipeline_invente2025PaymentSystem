@@ -26,10 +26,24 @@ public class emailUtil {
      * @param mail The recipient's email address.
      * @param details The ReconciledEvent containing all necessary data for the ticket.
      */
+//    public void sendTicketPurchaseMail(String mail, ReconciledEvent details) {
+//        asyncEmailSender.sendTicketEmail(mail, details);
+//    }
+//    public void sendHackathonTicketMail(String recipient, HackathonReconciledEvent details, List<String> ticketUuids) {
+//        asyncEmailSender.sendHackathonTicketEmail(recipient, details, ticketUuids);
+//    }
     public void sendTicketPurchaseMail(String mail, ReconciledEvent details) {
-        asyncEmailSender.sendTicketEmail(mail, details);
+        if ("on".equalsIgnoreCase(System.getenv("EMAIL_KILLSWITCH"))) {
+            asyncEmailSender.sendTicketEmail(mail, details);
+        } else {
+           // System.out.println("EMAIL_KILLSWITCH is off. Email not sent.");
+        }
     }
     public void sendHackathonTicketMail(String recipient, HackathonReconciledEvent details, List<String> ticketUuids) {
-        asyncEmailSender.sendHackathonTicketEmail(recipient, details, ticketUuids);
+        if ("on".equalsIgnoreCase(System.getenv("EMAIL_KILLSWITCH"))) {
+            asyncEmailSender.sendHackathonTicketEmail(recipient, details, ticketUuids);
+        } else {
+          //  System.out.println("EMAIL_KILLSWITCH is off. Email not sent.");
+        }
     }
 }
