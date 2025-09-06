@@ -128,7 +128,7 @@ services:
         max-file: "3"
 
   admin-backend:
-    image: irfanakthar/invente25-admin-backend:v5.3
+    image: irfanakthar/invente25-admin-backend:v5.4
     # build: C:\Users\irfan\COLLEGE\Invente25\invente25-admin-backend\backend
     container_name: admin-backend-v1
     ports:
@@ -163,7 +163,7 @@ services:
         max-file: "3"
 
   admin-frontend:
-    image: irfanakthar/invente25-admin-frontend:v3
+    image: irfanakthar/invente25-admin-frontend:v3.1
     # build: C:\Users\irfan\COLLEGE\Invente25\invente25-admin-backend\frontend
     container_name: admin-frontend-v1
     ports:
@@ -175,6 +175,7 @@ services:
       # This remains localhost because the browser accesses it from the host machine
       - VITE_API_URL=http://localhost:4000
       - VITE_TECH_PASS_PRICE=${VITE_TECH_PASS_PRICE}
+      - VITE_API_BASE=http://localhost:4000
     restart: unless-stopped
     logging:
       driver: "json-file"
