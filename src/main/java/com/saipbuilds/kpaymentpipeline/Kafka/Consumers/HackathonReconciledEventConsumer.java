@@ -40,7 +40,7 @@ public class HackathonReconciledEventConsumer {
                 event.getEmailID(), event.getPaymentID(), event.isReconciled());
         paymentDatabaseServices.insertHackDetailsS3(event);
         try {
-            emailSender.sendHackathonTicketMail(event.getEmailID(), event, hackPassMapper.findTeamIdByPaymentId(event.getPaymentID()));
+            emailSender.sendHackathonTicketMail(event.getLeader_email(), event, hackPassMapper.findTeamIdByPaymentId(event.getPaymentID()));
             log.info("Ticket email queued for sending to {}", event.getEmailID());
         } catch (Exception e) {
             log.error("Failed to queue ticket email for paymentID={}", event.getPaymentID(), e);

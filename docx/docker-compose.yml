@@ -115,7 +115,7 @@ services:
       context: ./springBoot
       dockerfile: Dockerfile
     container_name: payment-app-v1
-    image: saip2005/docx-app:2.1
+    image: saip2005/docx-app:3.1
     ports:
       - "8080:8080"
     env_file:

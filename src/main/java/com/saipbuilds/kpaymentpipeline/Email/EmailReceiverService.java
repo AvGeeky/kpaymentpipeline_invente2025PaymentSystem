@@ -1,10 +1,9 @@
-package com.saipbuilds.kpaymentpipeline.Email;
 
+package com.saipbuilds.kpaymentpipeline.Email;
 
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentInfo;
 import com.saipbuilds.kpaymentpipeline.DTO.ReceiptReceivedEvent;
 import com.saipbuilds.kpaymentpipeline.Redis.RedisPaymentStore;
-
 import com.saipbuilds.kpaymentpipeline.Kafka.Producers.EventProducer;
 import com.sun.mail.imap.IMAPFolder;
 import jakarta.annotation.PreDestroy;
@@ -12,14 +11,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-
+import javax.mail.search.AndTerm;
+import javax.mail.search.ComparisonTerm;
+import javax.mail.search.FlagTerm;
+import javax.mail.search.ReceivedDateTerm;
+import javax.mail.search.SearchTerm;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import javax.mail.*;
 import javax.mail.event.MessageCountAdapter;
 import javax.mail.event.MessageCountEvent;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -38,21 +41,21 @@ public class EmailReceiverService {
     private final EmailProcessedStoreProperties processedProps;
     private final Session session;
     private final RedisTemplate<String, Object> redisTemplate; // used for heartbeat
+    private final EventProducer eventProducer;
 
     private volatile Store store;
     private volatile IMAPFolder inbox;
 
     private final ScheduledExecutorService keepAliveScheduler = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "imap-keepalive"));
     private final ScheduledExecutorService heartbeatScheduler = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "email-heartbeat"));
-    private final ScheduledExecutorService sweepScheduler =
-            Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "email-sweep"));
+    private final ScheduledExecutorService sweepScheduler = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "email-sweep"));
     private final ExecutorService workerPool = Executors.newFixedThreadPool(6, r -> new Thread(r, "email-worker-"));
     private final AtomicBoolean running = new AtomicBoolean(false);
 
     private ScheduledFuture<?> keepAliveFuture;
     private ScheduledFuture<?> heartbeatFuture;
 
-    // single listener instance so we can remove it on close
+    // single listener instance
     private final MessageCountAdapter messageListener = new MessageCountAdapter() {
         @Override
         public void messagesAdded(MessageCountEvent event) {
@@ -62,21 +65,17 @@ public class EmailReceiverService {
         }
     };
 
-
-
-
-    // business TTL and processed TTL (configurable)
+    // business TTL and processed TTL
     private final Duration businessKeyTtl = Duration.ofMinutes(20);
     private final int processedKeyTtlSeconds;
-    private EventProducer eventProducer;
-
 
     public EmailReceiverService(EmailProperties props,
                                 TokenProvider tokenProvider,
                                 RedisPaymentStore redisPaymentStore,
                                 EmailProcessedStoreProperties processedProps,
                                 Session session,
-                                RedisTemplate<String, Object> redisTemplate, EventProducer eventProducer) {
+                                RedisTemplate<String, Object> redisTemplate,
+                                EventProducer eventProducer) {
         this.eventProducer = eventProducer;
         this.props = props;
         this.tokenProvider = tokenProvider;
@@ -92,9 +91,7 @@ public class EmailReceiverService {
             log.warn("EmailReceiverService already running");
             return;
         }
-
-
-        Thread t = new Thread(this::mainLoop, "EmailReceiverService-Loop"); //handles incoming emails
+        Thread t = new Thread(this::mainLoop, "EmailReceiverService-Loop");
         t.setDaemon(true);
         t.start();
     }
@@ -106,10 +103,8 @@ public class EmailReceiverService {
                 scheduleSweep();
                 connectAndOpenInbox();
                 scheduleHeartbeat();
-                // ensure listener not added multiple times
                 try { inbox.removeMessageCountListener(messageListener); } catch (Exception ignored) {}
                 inbox.addMessageCountListener(messageListener);
-
                 scheduleKeepAlive();
 
                 while (running.get() && store != null && store.isConnected() && inbox != null && inbox.isOpen()) {
@@ -192,9 +187,8 @@ public class EmailReceiverService {
     private void scheduleHeartbeat() {
         log.warn("Heartbeat scheduler started");
         if (heartbeatFuture != null && !heartbeatFuture.isDone()) heartbeatFuture.cancel(true);
-        long ttlSeconds = 90; // 1.5 minutes, can be adjusted as needed
+        long ttlSeconds = 90;
         heartbeatFuture = heartbeatScheduler.scheduleAtFixedRate(() -> {
-            log.warn("Heartbeat check started");
             try {
                 StringBuilder issues = new StringBuilder();
 
@@ -208,7 +202,7 @@ public class EmailReceiverService {
                 else if (!store.isConnected()) issues.append("store not connected, ");
                 if (!running.get()) issues.append("service not running, ");
 
-                if (issues.length() == 0) {
+                if (issues.isEmpty()) {
                     String hbKey = "email-listener:heartbeat";
                     String value = Instant.now().toString();
                     redisTemplate.opsForValue().set(hbKey, value, Duration.ofSeconds(ttlSeconds));
@@ -222,8 +216,6 @@ public class EmailReceiverService {
         }, 5, 60, TimeUnit.SECONDS);
     }
 
-
-
     private void safeHandle(Message msg) {
         try { handleIncoming(msg); } catch (Exception e) { log.error("Failed to handle message", e); }
     }
@@ -231,75 +223,32 @@ public class EmailReceiverService {
     private void handleIncoming(Message message) {
         String messageId = null;
         try {
-            // get message id early (header-only cheap op if inbox fetched headers)
             messageId = safeGetMessageId(message);
             if (messageId == null) {
-                // fallback synthetic id
                 messageId = "synth-" + Math.abs(message.hashCode()) + "-" + System.currentTimeMillis();
             }
 
-            // fast path: check Redis processed flag and skip if present
-            try {
-                if (redisPaymentStore.isProcessed(messageId)) {
-                    log.debug("Message already processed in Redis (m-id={}), skipping.", messageId);
-                    // optional: still move to Processed for mailbox cleanliness
-                    moveToFolder(message, "Processed");
-                    // best-effort: mark SEEN but do not rely on it
-                    try { message.setFlag(Flags.Flag.SEEN, true); } catch (Exception ignored) {}
-                    return;
-                }
-            } catch (Exception e) {
-                // If Redis is unavailable, we continue and try to process (fail-open).
-                log.warn("Redis check failed for mid={}, continuing to attempt parse", messageId, e);
-            }
-
-            // parse full message (this is the heavy work) ---
-            PaymentInfo info = EmailParser.parse(message);
-            if (info == null) {
-                log.info("Could not parse payment info; moving to Unprocessed (mid={})", messageId);
-
-                moveToFolder(message, "Unprocessed");
-                try { message.setFlag(Flags.Flag.SEEN, true); } catch (Exception ignored) {}
+            if (redisPaymentStore.isProcessed(messageId)) {
+                log.debug("Message already processed in Redis (mid={}), skipping.", messageId);
                 return;
             }
 
-            // Ensure the PaymentInfo contains the messageId we used (parser might give it)
+            PaymentInfo info = EmailParser.parse(message);
+            if (info == null) {
+                log.info("Could not parse payment info (mid={})", messageId);
+                return;
+            }
+
             if (info.getMessageId() == null || info.getMessageId().isBlank()) {
                 info.setMessageId(messageId);
             } else {
-                // normalize parser-provided id to our canonical form (avoid CRLF issues)
                 messageId = info.getMessageId();
             }
 
-            // timestamp check: skip if older than 1 day (business rule)
-            Instant cutoff = Instant.now().minus(1, ChronoUnit.DAYS);
-            if (info.getPaidOn().isBefore(cutoff)) {
-                log.info("Payment {} older than 1 day ({}). mid={}", info.getPaymentId(), info.getPaidOn(), messageId);
-//                try {
-//                    // mark processed so we don't re-parse
-//                    redisPaymentStore.savePaymentAtomic(info, businessKeyTtl(), processedKeyTtlSeconds);
-//                } catch (Exception e) {
-//                    log.warn("Failed to mark processed for old payment mid={}", messageId, e);
-//                }
-                moveToFolder(message, "Processed");
-                try { message.setFlag(Flags.Flag.SEEN, true); } catch (Exception ignored) {}
-                return;
-            }
-
-            // Attempt atomic claim+write using RedisPaymentStore (it returns true if we claimed)
-            boolean claimed;
-            try {
-                claimed = redisPaymentStore.savePaymentAtomic(info, businessKeyTtl(), processedKeyTtlSeconds);
-            } catch (Exception e) {
-                // fallback behaviour: log and attempt to mark processed non-atomically (fail-open)
-                log.error("Error while saving payment to Redis for mid={}", messageId, e);
-                claimed = false;
-            }
-
+            boolean claimed = redisPaymentStore.savePaymentAtomic(info, businessKeyTtl(), processedKeyTtlSeconds);
             if (claimed) {
                 log.info("Claimed and saved payment {} (mid={})", info.getPaymentId(), messageId);
-                moveToFolder(message, "Processed");
-                try { message.setFlag(Flags.Flag.SEEN, true); } catch (Exception ignored) {}
+
                 ReceiptReceivedEvent event = ReceiptReceivedEvent.builder()
                         .emailID(info.getPayerEmail())
                         .paymentID(info.getPaymentId())
@@ -308,68 +257,68 @@ public class EmailReceiverService {
                         .phoneNumber(info.getPhone())
                         .paidOn(info.getPaidOn().toString())
                         .build();
-                eventProducer.sendReceiptEvent(event);
-                log.info(" S2 EMAIL - Produced ReceiptReceivedEvent for payment {} (mid={})", info.getPaymentId(), messageId);
+
+                // Wait synchronously for Kafka ack
+                try {
+                    eventProducer.sendReceiptEvent(event);
+                    message.setFlag(Flags.Flag.SEEN, true); // only after Kafka ack
+                    log.info("Kafka ACK received, marked SEEN mid={}", messageId);
+                } catch (Exception e) {
+                    log.error("Kafka send failed for mid={}, leaving in INBOX", messageId, e);
+                }
             } else {
-                log.info("Payment {} already claimed by another instance (mid={}), moving to Processed", info.getPaymentId(), messageId);
-                moveToFolder(message, "Processed");
-                try { message.setFlag(Flags.Flag.SEEN, true); } catch (Exception ignored) {}
+                log.info("Payment {} already claimed by another instance (mid={})", info.getPaymentId(), messageId);
             }
 
         } catch (Exception ex) {
             log.error("Error processing incoming message mid=" + messageId, ex);
-            // On unexpected errors, try to move message to Unprocessed so it won't keep being retried forever
-            try { moveToFolder(message, "Unprocessed"); } catch (Exception ignore) {}
         }
     }
 
-
     private Duration businessKeyTtl() { return businessKeyTtl; }
 
-    private void markSeen(Message msg) {
-        try { msg.setFlag(Flags.Flag.SEEN, true); } catch (MessagingException e) { log.warn("Failed to mark SEEN", e); }
-    }
-
-    //run a scheduler event to sweep unseen messages every one hour
+    // Sweep all messages without cutoff
     private void scheduleSweep() {
-        if (sweepFuture != null && !sweepFuture.isDone()) return; // already scheduled
-        log.warn("Scheduling Redis-based unseen message sweep started !!!@!!!");
+        if (sweepFuture != null && !sweepFuture.isDone()) return;
+        log.info("Is sweep scheduler shut down? {}", sweepScheduler.isShutdown());
+        log.info("Scheduling Redis-based sweep for all messages in the last 24 hours.");
+        int sweepIntervalMinutes = Integer.parseInt(System.getenv("SCHEDULED_SWEEP_TIME"));
         sweepFuture = sweepScheduler.scheduleAtFixedRate(() -> {
             try {
                 if (inbox != null && inbox.isOpen()) {
-                    log.debug("Running Redis-based unseen sweep (headers only)...");
+                    log.debug("Running Redis-based sweep...");
 
-                    Instant cutoff = Instant.now().minus(60, ChronoUnit.MINUTES);
-                    Message[] messages = inbox.getMessages();
+                    // 1. Define the time cutoff for the search (24 hours ago)
+                    Instant cutoff = Instant.now().minus(1, ChronoUnit.DAYS);
+                    Date cutoffDate = Date.from(cutoff);
 
+                    // 2. Create search criteria: Received AFTER the cutoff date
+                    SearchTerm recentTerm = new ReceivedDateTerm(ComparisonTerm.GT, cutoffDate); // <-- MODIFIED: Only this term is needed
+
+                    // 3. Execute the search on the server for ALL recent messages
+                    Message[] messages = inbox.search(recentTerm); // <-- MODIFIED: No longer using the combined term
+
+                    if (messages.length > 0) {
+                        log.info("Sweep found {} recent messages to check against Redis.", messages.length);
+                    } else {
+                        log.debug("Sweep found no recent messages.");
+                    }
+                    // The rest of the logic remains the same, but now operates on a much smaller list
                     for (Message m : messages) {
                         try {
-                            // Skip expunged messages
                             if (m.isExpunged()) continue;
 
+                            // This fetch is now much cheaper as it's only for a few messages
                             m.getFolder().fetch(new Message[]{m}, new FetchProfile() {{
                                 add(Item.ENVELOPE);
                                 add("Message-ID");
                             }});
 
-                            Instant received;
-                            try {
-                                Date rcvd = m.getReceivedDate();
-                                received = (rcvd == null) ? Instant.now() : rcvd.toInstant();
-                            } catch (MessageRemovedException mre) {
-                                log.debug("Message already expunged, skipping: msgNum={}", m.getMessageNumber());
-                                continue; // move to next message
-                            }
+                            String messageId = safeGetMessageId(m);
+                            if (messageId == null) continue;
 
-                            if (received.isBefore(cutoff)) continue;
-
-                            String[] idHeader = m.getHeader("Message-ID");
-                            if (idHeader == null || idHeader.length == 0) continue;
-
-                            String messageId = idHeader[0];
                             if (!redisPaymentStore.isProcessed(messageId)) {
-                                log.info("Sweep found unprocessed message mid={}, fetching full message", messageId);
-
+                                log.info("Sweep found unprocessed message mid={}, submitting for handling", messageId);
                                 try {
                                     Message fullMessage = inbox.getMessage(m.getMessageNumber());
                                     workerPool.submit(() -> safeHandle(fullMessage));
@@ -383,27 +332,16 @@ public class EmailReceiverService {
                             log.warn("Error while checking message in sweep", innerEx);
                         }
                     }
-
                 }
             } catch (Exception e) {
-                log.warn("Error during Redis-based unseen sweep", e);
+                log.warn("Error during Redis-based sweep", e);
             }
-        }, 1, 15, TimeUnit.MINUTES); // 15M sweep interval
+        }, 1, sweepIntervalMinutes, TimeUnit.MINUTES);
     }
 
-
-
+    // Disabled: we no longer move mails out of INBOX
     private void moveToFolder(Message msg, String folderName) {
-        try {
-            Folder dest = store.getFolder(folderName);
-            if (!dest.exists()) dest.create(Folder.HOLDS_MESSAGES);
-            if (!dest.isOpen()) dest.open(Folder.READ_WRITE);
-            inbox.copyMessages(new Message[]{msg}, dest);
-            msg.setFlag(Flags.Flag.DELETED, true);
-            log.info("Moved message to folder {}", folderName);
-        } catch (Exception e) {
-            log.error("Failed to move message to {}: {}", folderName, e.getMessage());
-        }
+        // intentionally no-op: we now keep all mails in INBOX for safety
     }
 
     private void safeCloseFolder() {
@@ -454,3 +392,4 @@ public class EmailReceiverService {
         return status;
     }
 }
+

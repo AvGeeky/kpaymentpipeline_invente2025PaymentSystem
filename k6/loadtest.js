@@ -39,16 +39,18 @@ const departments = new SharedArray("departments", function() {
 const genders = new SharedArray("genders", function() {
     return ["Male", "Female"];
 });
-const eventIds = [ 46, 51, 48, 56, 59, 14, 57, 47, 61, 64, 63, 58, 69, 68, 72, 74, 71, 73, 75, 76, 62, 66, 36, 70, 80, 79, 81, 83, 19, 90, 85, ];
+const eventIds = [ 31, 25, 32, 33, 34, 28, 38, 39, 41, 53, 55, 54, 52, 42, 40, 43, 45, 46, 59, 14,
+    57, 51, 48, 56, 61, 64, 63, 58, 69, 47, 68, 72, 74, 71, 73, 75, 76, 62, 66, 36,
+    70, 80, 79, 81, 83, 19, 90, 85, 89, 86, 87, 84, 88 ];
 
 
 // --- k6 Options ---
 
 export let options = {
     stages: [
-        { duration: "5s", target: 10 }, // Ramp up to 10 VUs
-        { duration: "15s", target: 20 },  // Stay at 10 VUs
-        { duration: "5s", target: 0 },   // Ramp down
+        { duration: "10s", target: 15 }, // Ramp up to 20 VUs
+        { duration: "15s", target: 20 },  // Stay at 20 VUs
+        { duration: "10s", target: 0 },   // Ramp down
     ],
     thresholds: {
         http_req_failed: ["rate<0.01"], // HTTP errors should be less than 1%
@@ -78,7 +80,7 @@ export default function () {
     const headers = generateAuthHeaders(SECRET_KEY);
 
     // --- Generate common data for both requests ---
-    const paymentId = `pay_vuheckathon22${__VU}_iter${__ITER}`;
+    const paymentId = `pay_techfit${__VU}_iter${__ITER}`;
     const createdAt = new Date().toISOString();
     const leaderEmail = leaderEmails[Math.floor(Math.random() * leaderEmails.length)];
     const leaderPhone = `9${Math.floor(100000000 + Math.random() * 900000000)}`;

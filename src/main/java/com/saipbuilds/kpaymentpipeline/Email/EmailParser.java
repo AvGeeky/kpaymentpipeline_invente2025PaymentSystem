@@ -1,5 +1,5 @@
-package com.saipbuilds.kpaymentpipeline.Email;
 
+package com.saipbuilds.kpaymentpipeline.Email;
 
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentInfo;
 import org.jsoup.Jsoup;
@@ -12,6 +12,7 @@ import javax.mail.BodyPart;
 import javax.mail.Message;
 import javax.mail.MessagingException;
 import javax.mail.Multipart;
+import javax.mail.Part;
 import javax.mail.internet.InternetAddress;
 import java.io.IOException;
 import java.time.Instant;
@@ -24,47 +25,220 @@ import java.time.temporal.TemporalAccessor;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 public final class EmailParser {
     private static final Logger log = LoggerFactory.getLogger(EmailParser.class);
 
+    // Re-used REGEX patterns from your original code
     private static final Pattern PAYMENT_ID_PATTERN = Pattern.compile("(pay_[A-Za-z0-9_\\-]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern AMOUNT_PATTERN = Pattern.compile("₹\\s*([0-9,]+(?:\\.[0-9]{1,2})?)|Rs\\.?\\s*([0-9,]+(?:\\.[0-9]{1,2})?)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern PAID_ON_PATTERN = Pattern.compile("(\\d{1,2}(?:st|nd|rd|th)?\\s+\\w{3,}\\,?\\s+\\d{4})", Pattern.CASE_INSENSITIVE);
     private static final Pattern EMAIL_PATTERN = Pattern.compile("([A-Za-z0-9._%+\\-]+@[A-Za-z0-9.\\-]+\\.[A-Za-z]{2,})");
     private static final Pattern PHONE_PATTERN = Pattern.compile("(?:\\+?91[\\-\\s]?)?(\\d{10})");
 
     private EmailParser() {}
 
     /**
-     * Parse javax.mail.Message -> PaymentInfo
-     * Returns null if parser couldn't find paymentId and amount.
+     * Main entry point. Tries to parse HTML, falls back to Plain Text.
      */
     public static PaymentInfo parse(Message message) {
+        // Tier 1: Attempt to parse HTML content
         try {
-            String subject = safeGetSubject(message);
-            String messageId = safeGetMessageId(message);
-            String rawBody = extractText(message);
-            Document doc = Jsoup.parse(rawBody);
-
-            String merchantName = extractMerchant(doc);
-            String paymentId = extractPaymentId(doc, subject, rawBody);
-            String amount = extractAmount(doc, subject, rawBody);
-            Instant paidOn = extractPaidOn(doc, message, rawBody);
-            String payerEmail = extractPayerEmail(doc, rawBody, message);
-            String phone = extractPhone(doc, rawBody);
-            String method = extractMethod(doc, rawBody);
-
-            if (paymentId == null && amount == null) {
-                log.debug("Parser couldn't find paymentId or amount for message {}", messageId);
-                return null;
+            String htmlContent = getTextFromMessagePart(message, "text/html");
+            if (htmlContent != null && !htmlContent.isEmpty()) {
+                PaymentInfo info = parseFromHtml(htmlContent, message);
+                if (info != null && info.getPaymentId() != null && info.getAmount() != null) {
+                    log.debug("Successfully parsed payment info from HTML for message {}", info.getMessageId());
+                    return info; // Success from HTML
+                }
             }
-
-            if (amount != null) amount = normalizeAmount(amount);
-            return new PaymentInfo(paymentId, amount, paidOn, payerEmail, phone, method, merchantName, subject, messageId);
         } catch (Exception e) {
-            log.warn("Error parsing email", e);
-            return null;
+            log.warn("Could not parse HTML content, will try plain text.", e);
         }
+
+        // Tier 2: Fallback to parsing Plain Text content
+        try {
+            String plainTextContent = getTextFromMessagePart(message, "text/plain");
+            if (plainTextContent != null && !plainTextContent.isEmpty()) {
+                PaymentInfo info = parseFromPlainText(plainTextContent, message);
+                if (info != null && info.getPaymentId() != null && info.getAmount() != null) {
+                    log.debug("Successfully parsed payment info from Plain Text for message {}", info.getMessageId());
+                    return info; // Success from Plain Text
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not parse plain text content.", e);
+        }
+
+        log.warn("Could not parse payment info from either HTML or Plain Text.");
+        return null; // Both methods failed
+    }
+
+    /**
+     * Orchestrator for parsing HTML content using Jsoup.
+     */
+    private static PaymentInfo parseFromHtml(String htmlContent, Message message) throws MessagingException {
+        Document doc = Jsoup.parse(htmlContent);
+        String subject = safeGetSubject(message);
+        String messageId = safeGetMessageId(message);
+
+        String paymentId = extractPaymentIdFromHtml(doc, subject);
+        String amount = extractAmountFromHtml(doc, subject);
+
+        if (paymentId == null && amount == null) return null;
+
+        Instant paidOn = extractPaidOn(doc.text(), message);
+        String payerEmail = extractPayerEmailFromHtml(doc, message);
+        String phone = extractPhone(doc.text());
+        String method = extractMethodFromHtml(doc);
+        String merchantName = extractMerchant(doc);
+
+        return new PaymentInfo(paymentId, normalizeAmount(amount), paidOn, payerEmail, phone, method, merchantName, subject, messageId);
+    }
+
+    /**
+     * Orchestrator for parsing Plain Text content using Regex.
+     */
+    private static PaymentInfo parseFromPlainText(String textContent, Message message) throws MessagingException {
+        String subject = safeGetSubject(message);
+        String messageId = safeGetMessageId(message);
+        String combinedText = textContent + " " + subject; // Include subject for better matching
+
+        String paymentId = extractFromText(PAYMENT_ID_PATTERN, combinedText);
+        String amountText = extractFromText(AMOUNT_PATTERN, combinedText);
+        String amount = (amountText != null) ? amountText.replaceAll("[^0-9,.]", "") : null;
+
+        if (paymentId == null && amount == null) return null;
+
+        Instant paidOn = extractPaidOn(textContent, message);
+        String payerEmail = extractFromText(EMAIL_PATTERN, textContent);
+        String phone = extractFromText(PHONE_PATTERN, textContent);
+        String method = extractMethodFromText(textContent);
+
+        return new PaymentInfo(paymentId, normalizeAmount(amount), paidOn, payerEmail, phone, method, null, subject, messageId);
+    }
+
+    // =================================================================
+    // =========== HELPER METHODS FOR EXTRACTION =======================
+    // =================================================================
+
+    private static String getTextFromMessagePart(Part part, String mimeType) throws MessagingException, IOException {
+        if (part.isMimeType(mimeType)) {
+            return part.getContent().toString();
+        }
+        if (part.isMimeType("multipart/*")) {
+            Multipart multipart = (Multipart) part.getContent();
+            for (int i = 0; i < multipart.getCount(); i++) {
+                String result = getTextFromMessagePart(multipart.getBodyPart(i), mimeType);
+                if (result != null) return result;
+            }
+        }
+        return null;
+    }
+
+    // --- HTML Specific Extractors ---
+    private static String extractMerchant(Document doc) {
+        Element e = doc.selectFirst("h2, .branding-content, .header h2, .title-content, .content-element");
+        return e != null ? e.text().trim() : null;
+    }
+
+    private static String extractPaymentIdFromHtml(Document doc, String subject) {
+        return extractFromText(PAYMENT_ID_PATTERN, doc.text() + " " + subject);
+    }
+
+    private static String extractAmountFromHtml(Document doc, String subject) {
+        Element rupee = doc.selectFirst(".amount, .rupees, .symbol");
+        if (rupee != null) return rupee.text();
+        return extractFromText(AMOUNT_PATTERN, doc.text() + " " + subject);
+    }
+
+    private static String extractPayerEmailFromHtml(Document doc, Message message) throws MessagingException {
+        Element emailEl = doc.selectFirst(".information-row:contains(Email) .value, .card:contains(Email) .value");
+        if (emailEl != null) {
+            return extractFromText(EMAIL_PATTERN, emailEl.text());
+        }
+        // Fallback to message headers if not in HTML body
+        return extractPayerEmailFromMessage(message);
+    }
+
+    private static String extractMethodFromHtml(Document doc) {
+        Element methodEl = doc.selectFirst(".information-row:contains(Method) .value, .information-row:contains(UPI)");
+        if (methodEl != null) return methodEl.text();
+        return extractMethodFromText(doc.text());
+    }
+
+    // --- Plain Text Specific Extractors ---
+    private static String extractMethodFromText(String text) {
+        String t = text.toLowerCase();
+        if (t.contains("upi")) return "UPI";
+        if (t.contains("card")) return "CARD";
+        return null;
+    }
+
+    // --- Shared Extractors ---
+    private static String extractPhone(String text) {
+        return extractFromText(PHONE_PATTERN, text);
+    }
+
+    private static String extractFromText(Pattern pattern, String text) {
+        if (text == null) return null;
+        Matcher m = pattern.matcher(text);
+        if (m.find()) {
+            // The amount pattern has two capturing groups, check both
+            if (pattern == AMOUNT_PATTERN) {
+                return m.group(1) != null ? m.group(1) : m.group(2);
+            }
+            // All other patterns use the first group
+            return m.group(1);
+        }
+        return null;
+    }
+
+    private static Instant extractPaidOn(String textSource, Message message) {
+        // This logic can be shared as it's primarily regex based
+        // First try: look for "Paid On"
+        int startIndex = textSource.toLowerCase().indexOf("paid on");
+        if (startIndex != -1) {
+            String afterMarker = textSource.substring(startIndex + "paid on".length()).trim();
+            Instant parsed = tryParseDate(afterMarker.split("\\s+|,")[0]);
+            if(parsed != null) return parsed;
+        }
+
+        // Second try: look for ISO date
+        Matcher iso = Pattern.compile("(\\d{4}-\\d{2}-\\d{2}[T\\s]\\d{2}:\\d{2}(?::\\d{2})?(?:Z|[+-]\\d{2}:?\\d{2})?)").matcher(textSource);
+        if (iso.find()) {
+            try { return Instant.parse(iso.group(1).replace(' ', 'T')); } catch (Exception ignored) {}
+        }
+
+        // Fallback: email sent date
+        try {
+            java.util.Date sent = message.getSentDate();
+            if (sent != null) return sent.toInstant();
+        } catch (MessagingException ignored) {}
+
+        return Instant.now();
+    }
+
+    private static Instant tryParseDate(String dateStr) {
+        // Simplified date parser, can be expanded
+        DateTimeFormatter[] formatters = {
+                DateTimeFormatter.ofPattern("dMMM,yyyy", Locale.ENGLISH),
+                DateTimeFormatter.ofPattern("dMMMyyyy", Locale.ENGLISH)
+        };
+        for(DateTimeFormatter fmt : formatters) {
+            try {
+                return LocalDate.parse(dateStr, fmt).atStartOfDay(ZoneId.of("UTC")).toInstant();
+            } catch (DateTimeParseException ignored) {}
+        }
+        return null;
+    }
+
+    private static String extractPayerEmailFromMessage(Message message) throws MessagingException {
+        javax.mail.Address[] froms = message.getFrom();
+        if (froms != null && froms.length > 0) {
+            String addr = ((InternetAddress) froms[0]).getAddress();
+            if (addr != null && !addr.isBlank()) return addr.toLowerCase();
+        }
+        return null;
     }
 
     private static String safeGetSubject(Message m) {
@@ -74,153 +248,9 @@ public final class EmailParser {
     static String safeGetMessageId(Message message) {
         try {
             String[] hdr = message.getHeader("Message-ID");
-            if (hdr != null && hdr.length > 0 && hdr[0] != null && !hdr[0].isBlank()) return hdr[0];
-        } catch (Exception ignored) {}
-        try {
-            if (message instanceof javax.mail.internet.MimeMessage) {
-                String mid = ((javax.mail.internet.MimeMessage) message).getMessageID();
-                if (mid != null && !mid.isBlank()) return mid;
-            }
+            if (hdr != null && hdr.length > 0) return hdr[0];
         } catch (Exception ignored) {}
         return "synth-" + Math.abs(message.hashCode()) + "-" + System.currentTimeMillis();
-    }
-
-    private static String extractText(Message message) {
-        try {
-            Object content = message.getContent();
-            if (content instanceof String) return (String) content;
-            if (content instanceof Multipart) {
-                Multipart mp = (Multipart) content;
-                for (int i = 0; i < mp.getCount(); i++) {
-                    BodyPart bp = mp.getBodyPart(i);
-                    if (bp.isMimeType("text/html")) return (String) bp.getContent();
-                    if (bp.isMimeType("text/plain")) return (String) bp.getContent();
-                }
-            }
-        } catch (IOException | MessagingException e) {
-            log.warn("Could not read message content", e);
-        }
-        return "";
-    }
-
-    private static String extractMerchant(Document doc) {
-        Element e = doc.selectFirst("h2, .branding-content, .header h2, .title-content, .content-element");
-        return e != null ? e.text().trim() : null;
-    }
-
-    private static String extractPaymentId(Document doc, String subject, String raw) {
-        String text = (doc.text() + " " + subject + " " + raw);
-        Matcher m = PAYMENT_ID_PATTERN.matcher(text);
-        if (m.find()) return m.group(1);
-        // fallback: look in structured rows for label "Payment Id"
-        Element info = doc.selectFirst(".information-row, .merchant-highlight, .card");
-        if (info != null) {
-            Matcher m2 = PAYMENT_ID_PATTERN.matcher(info.text());
-            if (m2.find()) return m2.group(1);
-        }
-        return null;
-    }
-
-    private static String extractAmount(Document doc, String subject, String raw) {
-        String text = (doc.text() + " " + subject + " " + raw);
-        Matcher m = AMOUNT_PATTERN.matcher(text);
-        if (m.find()) {
-            String g1 = m.group(1);
-            String g2 = m.group(2);
-            return g1 != null && !g1.isBlank() ? g1 : g2;
-        }
-        Element rupee = doc.selectFirst(".amount, .rupees, .symbol");
-        if (rupee != null) return rupee.text().replaceAll("[^0-9.,]", "");
-        return null;
-    }
-
-    private static Instant extractPaidOn(Document doc, Message message, String raw) {
-        String marker = "Paid On";
-        String textSource = doc.text();
-
-        // First try: look for "Paid On" in HTML text
-        int startIndex = textSource.indexOf(marker);
-        if (startIndex != -1) {
-            String afterMarker = textSource.substring(startIndex + marker.length()).trim();
-            Instant parsed = tryParsePaidOn(afterMarker);
-            if (parsed != null) return parsed;
-        }
-
-        // Second try: look for ISO date in whole raw text
-        Matcher iso = Pattern.compile("(\\d{4}-\\d{2}-\\d{2}[T\\s]\\d{2}:\\d{2}(?::\\d{2})?(?:Z|[+-]\\d{2}:?\\d{2})?)")
-                .matcher(textSource);
-        if (iso.find()) {
-            try {
-                return Instant.parse(iso.group(1).replace(' ', 'T'));
-            } catch (Exception ignored) {}
-        }
-
-        // Fallback: email sent date
-        try {
-            java.util.Date sent = message.getSentDate();
-            if (sent != null) return sent.toInstant();
-        } catch (MessagingException ignored) {}
-
-        // Last fallback: now
-        return Instant.now();
-    }
-
-    // helper to try multiple patterns
-    private static Instant tryParsePaidOn(String dateStr) {
-        DateTimeFormatter[] formatters = {
-                DateTimeFormatter.ofPattern("d MMM, yyyy hh:mm:ss a 'UTC'XXX", Locale.ENGLISH),
-                DateTimeFormatter.ofPattern("d MMM, yyyy hh:mm a 'UTC'XXX", Locale.ENGLISH),
-                DateTimeFormatter.ofPattern("d MMM, yyyy", Locale.ENGLISH)
-        };
-        for (DateTimeFormatter fmt : formatters) {
-            try {
-                TemporalAccessor ta = fmt.parse(dateStr);
-                if (ta instanceof LocalDateTime) {
-                    return ((LocalDateTime) ta).atZone(ZoneId.of("UTC")).toInstant();
-                }
-                if (ta instanceof LocalDate) {
-                    return ((LocalDate) ta).atStartOfDay(ZoneId.of("UTC")).toInstant();
-                }
-            } catch (DateTimeParseException ignored) {}
-        }
-        return null;
-    }
-
-
-
-    private static String extractPayerEmail(Document doc, String raw, Message message) {
-        Element emailEl = doc.selectFirst(".information-row:contains(Email) .value, .card:contains(Email) .value");
-        if (emailEl != null) {
-            Matcher m = EMAIL_PATTERN.matcher(emailEl.text());
-            if (m.find()) return m.group(1).toLowerCase();
-        }
-        Matcher m = EMAIL_PATTERN.matcher(raw);
-        if (m.find()) return m.group(1).toLowerCase();
-        try {
-            javax.mail.Address[] froms = message.getFrom();
-            if (froms != null && froms.length > 0) {
-                String addr = ((InternetAddress) froms[0]).getAddress();
-                if (addr != null && !addr.isBlank()) return addr.toLowerCase();
-            }
-        } catch (Exception ignored) {}
-        return null;
-    }
-
-    private static String extractPhone(Document doc, String raw) {
-        Matcher m = PHONE_PATTERN.matcher(doc.text());
-        if (m.find()) return m.group(1);
-        m = PHONE_PATTERN.matcher(raw);
-        if (m.find()) return m.group(1);
-        return null;
-    }
-
-    private static String extractMethod(Document doc, String raw) {
-        Element methodEl = doc.selectFirst(".information-row:contains(Method) .value, .information-row:contains(UPI)");
-        if (methodEl != null) return methodEl.text();
-        String t = (doc.text() + " " + raw).toLowerCase();
-        if (t.contains("upi")) return "UPI";
-        if (t.contains("card")) return "CARD";
-        return null;
     }
 
     private static String normalizeAmount(String raw) {

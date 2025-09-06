@@ -7,8 +7,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.TopicBuilder;
 
-
-
 @Configuration
 public class KafkaTopicConfig {
 
@@ -27,18 +25,20 @@ public class KafkaTopicConfig {
     @Value("${kafka.topic.hackathon-payment_reconciled}")
     private String hackathonPaymentReconciledTopic;
 
-
-
     private static final int NUM_PARTITIONS = 3;
+    // ⚠️ In production, set this to >=2 (requires multiple brokers)
     private static final short REPLICATION_FACTOR = 1;
+
+    // --- Utility constants ---
+    private static final String RETENTION_7_DAYS = String.valueOf(7L * 24 * 60 * 60 * 1000);
 
     @Bean
     public NewTopic paymentReceivedTopic() {
-        // Using TopicBuilder is a more modern and readable way
         return TopicBuilder.name(paymentReceivedTopic)
                 .partitions(NUM_PARTITIONS)
                 .replicas(REPLICATION_FACTOR)
-                .config(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(1 * 24 * 60 * 60 * 1000)) // 1 days
+                .config(TopicConfig.RETENTION_MS_CONFIG, RETENTION_7_DAYS) // keep events for 7 days
+                .config(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, "1")
                 .build();
     }
 
@@ -47,37 +47,41 @@ public class KafkaTopicConfig {
         return TopicBuilder.name(emailDetectedTopic)
                 .partitions(NUM_PARTITIONS)
                 .replicas(REPLICATION_FACTOR)
-                .config(TopicConfig.RETENTION_MS_CONFIG, String.valueOf(1 * 24 * 60 * 60 * 1000)) // 1 days
+                .config(TopicConfig.RETENTION_MS_CONFIG, RETENTION_7_DAYS) // keep events for 7 days
+                .config(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, "1")
                 .build();
     }
 
     @Bean
     public NewTopic paymentReconciledTopic() {
-        // Use log compaction to only keep the latest status for each payment key.
+        // Persistent: log compaction keeps latest state per key
         return TopicBuilder.name(paymentReconciledTopic)
                 .partitions(NUM_PARTITIONS)
                 .replicas(REPLICATION_FACTOR)
                 .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_COMPACT)
+                .config(TopicConfig.MIN_CLEANABLE_DIRTY_RATIO_CONFIG, "0.5")
+                .config(TopicConfig.SEGMENT_MS_CONFIG, String.valueOf(24 * 60 * 60 * 1000)) // daily segments
                 .build();
     }
 
     @Bean
     public NewTopic hackathonPaymentReceivedTopic() {
-        // Use log compaction to only keep the latest status for each payment key.
         return TopicBuilder.name(hackathonPaymentReceivedTopic)
                 .partitions(NUM_PARTITIONS)
                 .replicas(REPLICATION_FACTOR)
-                .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_COMPACT)
+                .config(TopicConfig.RETENTION_MS_CONFIG, RETENTION_7_DAYS)
+                .config(TopicConfig.MIN_IN_SYNC_REPLICAS_CONFIG, "1")
                 .build();
     }
 
     @Bean
     public NewTopic hackathonPaymentReconciledTopic() {
-        // Use log compaction to only keep the latest status for each payment key.
         return TopicBuilder.name(hackathonPaymentReconciledTopic)
                 .partitions(NUM_PARTITIONS)
                 .replicas(REPLICATION_FACTOR)
                 .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_COMPACT)
+                .config(TopicConfig.MIN_CLEANABLE_DIRTY_RATIO_CONFIG, "0.5")
+                .config(TopicConfig.SEGMENT_MS_CONFIG, String.valueOf(24 * 60 * 60 * 1000))
                 .build();
     }
 }

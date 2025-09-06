@@ -134,7 +134,7 @@ public class AsyncEmailSenderUtil {
         return String.format("""
                         <div style='background:linear-gradient(135deg,#f0f5ff 0%%,#ffffff 100%%);padding:40px 0;font-family:Segoe UI,Arial,sans-serif;'>
                             <div style='max-width:600px;margin:auto;background:#FFFFFF;border-radius:18px;box-shadow:0 6px 30px rgba(0,0,0,0.1);padding:40px 32px;'>
-                                <img src="%s" alt="Event Logo" style="max-width:160px; margin-bottom:25px;">
+                                <img src="%s" alt="Event Logo" style="display:block; margin-left:auto; margin-right:auto; max-width:160px; margin-bottom:25px;">
                                 <div style='text-align:center;margin-bottom:24px;'>
                                     <h2 style='color:#0055A4;font-size:2.2rem;margin:0 0 8px 0;'>Your Invente 2025 Tickets Are Here!</h2>
                                     <p style='font-size:18px;color:#333;margin-bottom:20px;'>Hello %s, thank you for your purchase!</p>
@@ -145,7 +145,7 @@ public class AsyncEmailSenderUtil {
                                         <strong>Payment ID:</strong> %s<br>
                                         <strong>Amount Paid:</strong> %s<br>
                                         <strong>Payment Method:</strong> %s<br>
-                                        <strong>Date:</strong> %s
+                                        <strong>Date and Time:</strong> %s
                                     </p>
                                 </div>
                         
@@ -155,12 +155,12 @@ public class AsyncEmailSenderUtil {
                                     Sent by <strong>kPaymentPipeline</strong>, built by\s
                                     <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
                                         Saipranav
-                                    </a> &copy; 2025. Please present the QR code at the event.
+                                    </a>and his late night Cup(s) of Tea :). Please keep this E-Mail safe && present the QR code at the event.
                                 </p>
                             </div>
                         </div>
 """,
-                "https://ssnsnucinvente.com/_next/image?url=%2Flogos%2Finvente.png&w=640&q=75",
+                "https://ssnsnucinvente.com/logos/invente.png",
                 event.getName(),
                 event.getPaymentID(),
                 event.getAmount(),
@@ -194,7 +194,7 @@ public class AsyncEmailSenderUtil {
                 }
 
                 MimeMessage message = new MimeMessage(session);
-                message.setFrom(new InternetAddress(username, "kPaymentPipeline Tickets"));
+                message.setFrom(new InternetAddress(username, "Invente Tickets"));
                 message.addRecipient(Message.RecipientType.TO, new InternetAddress(recipient));
                 message.setSubject("Your Tickets for Payment: " + event.getPaymentID());
 
@@ -244,15 +244,14 @@ public class AsyncEmailSenderUtil {
 
         return String.format("""
             <div style='font-family:Segoe UI,Arial,sans-serif; background:#f9f9f9; padding:20px;'>
-            <img src="%s" alt="Event Logo" style="max-width:160px; margin-bottom:25px;">
-                <h2 style='color:#0055A4;'>Invente 2025 Hackathon Registration Confirmed!</h2>
+            <img src="%s" alt="Event Logo" style="display:block; margin-left:auto; margin-right:auto; max-width:160px; margin-bottom:25px;">
+                <h2 style='color:#0055A4;'>Your HackInfinity 2025 Registrations have been Confirmed!</h2>
                 <p>Hello <b>%s</b>, your team <b>%s</b> has successfully registered for the hackathon.</p>
                 <p><strong>Track:</strong> %s</p>
                 <p><strong>Payment ID:</strong> %s</p>
                 <p><strong>Payment Method:</strong> %s</p>
                 <p><strong>Amount:</strong> %s</p>
                 <p><strong>Date:</strong> %s</p>
-                
                 <div style='text-align:center; margin:20px 0;'>
                     <p><strong>Team Ticket QR Code:</strong></p>
                     %s
@@ -268,11 +267,11 @@ public class AsyncEmailSenderUtil {
             Sent by <strong>kPaymentPipeline</strong>, built by 
             <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
                 Saipranav
-            </a> &copy; 2025. Please present the QR code at the event.
+            </a> and his late night Coffee Cup(s) :). Please keep this E-Mail safe && present the QR code at the event.
         </p>
             </div>
             """,
-                "https://ssnsnucinvente.com/_next/image?url=%2Flogos%2Finvente.png&w=640&q=75",
+                "https://ssnsnucinvente.com/logos/invente.png",
                 event.getLeader_email(),
                 event.getTeam_name(),
                 event.getTrack(),
@@ -297,9 +296,9 @@ public class AsyncEmailSenderUtil {
 
             try {
                 MimeMessage message = new MimeMessage(session);
-                message.setFrom(new InternetAddress(username, "Hackathon Team Tickets"));
+                message.setFrom(new InternetAddress(username, "HackInfinity Team Tickets"));
                 message.addRecipient(Message.RecipientType.TO, new InternetAddress(recipient));
-                message.setSubject("Hackathon Ticket Confirmation - Team: " + event.getTeam_name());
+                message.setSubject("HackInfinity Ticket Confirmation - Team: " + event.getTeam_name());
 
                 // Generate HTML including QR codes
                 String htmlContent = generateHackathonTicketHtml(event, ticketUuids);

@@ -106,7 +106,7 @@ services:
   # Application Services
   # -----------------------
   payment-app:
-    image: saip2005/docx-app:2.1
+    image: saip2005/docx-app:3.1
     container_name: payment-app-v2
     ports:
       - "8080:8080"
@@ -128,7 +128,8 @@ services:
         max-file: "3"
 
   admin-backend:
-    image: irfanakthar/invente25-admin-backend:v4.1
+    image: irfanakthar/invente25-admin-backend:v5.3
+    # build: C:\Users\irfan\COLLEGE\Invente25\invente25-admin-backend\backend
     container_name: admin-backend-v1
     ports:
       - "4000:4000"
@@ -141,12 +142,14 @@ services:
       # Updated to point to the 'payment-app' service for internal communication
       - PAYMENT_SERVICE_URL=http://payment-app:8080/api/payment
       - RECEIPT_SERVICE_URL=http://payment-app:8080/restricted/receipt
-      - MASTER_PW=itsmeirfan
-      - EVENTS_API_URL=https://ssnsnucinvente.com/api/events?pagination[pageSize]=140
-      - SYNC_EVENTS_ENABLED=true
+      - HACKATHON_PAYMENT_SERVICE_URL=http://payment-app:8080/api/hackathon-payment
+      - MASTER_PW=${MASTER_PW}
+      - EVENTS_API_URL=${EVENTS_API_URL}
+      - SYNC_EVENTS_ENABLED=${SYNC_EVENTS_ENABLED}
       - SYNC_EVENTS_CRON=*/2 * * * *
-      - secretKey=rjkgsigirgrlgrl123y4t5u6i7o8p0d
-      - PAYMENT_SERVICE_SECRET=rjkgsigirgrlgrl123y4t5u6i7o8p0d
+      - secretKey=${secretKey}
+      - PAYMENT_SERVICE_SECRET=${PAYMENT_SERVICE_SECRET}
+      - GOOGLE_APPLICATION_CREDENTIALS="./credentials.json"
     depends_on:
       postgres:
         condition: service_healthy
@@ -160,7 +163,8 @@ services:
         max-file: "3"
 
   admin-frontend:
-    image: irfanakthar/invente25-admin-frontend:v1.1
+    image: irfanakthar/invente25-admin-frontend:v3
+    # build: C:\Users\irfan\COLLEGE\Invente25\invente25-admin-backend\frontend
     container_name: admin-frontend-v1
     ports:
       - "3000:3000"
@@ -170,6 +174,7 @@ services:
     environment:
       # This remains localhost because the browser accesses it from the host machine
       - VITE_API_URL=http://localhost:4000
+      - VITE_TECH_PASS_PRICE=${VITE_TECH_PASS_PRICE}
     restart: unless-stopped
     logging:
       driver: "json-file"

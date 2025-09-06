@@ -1,10 +1,4 @@
--- Clear existing data (truncate in dependency order)
-TRUNCATE TABLE slots CASCADE;
-TRUNCATE TABLE passes CASCADE;
-TRUNCATE TABLE receipts CASCADE;
-TRUNCATE TABLE events CASCADE;
-TRUNCATE TABLE departments CASCADE;
-TRUNCATE TABLE users CASCADE;
+
 
 
 -- Seed Events

@@ -1,6 +1,18 @@
 --- SQL migration script to initialize the database schema
 CREATE EXTENSION IF NOT EXISTS "pgcrypto"; -- this is for gen_random_uuid() (have to replace with uuid7)
 -- CREATE EXTENSION IF NOT EXISTS "citext"; -- no longer needed, using TEXT instead
+-- Drop tables in reverse order of creation to avoid foreign key issues
+--
+-- DROP TABLE IF EXISTS hack_reg_details CASCADE;
+-- DROP TABLE IF EXISTS track CASCADE;
+-- DROP TABLE IF EXISTS hack_passes CASCADE;
+-- DROP TABLE IF EXISTS admins CASCADE;
+-- DROP TABLE IF EXISTS slots CASCADE;
+-- DROP TABLE IF EXISTS passes CASCADE;
+-- DROP TABLE IF EXISTS receipts CASCADE;
+-- -- DROP TABLE IF EXISTS events CASCADE;
+-- -- DROP TABLE IF EXISTS departments CASCADE;
+-- DROP TABLE IF EXISTS users CASCADE;
 
 CREATE TABLE users ( -- participants
                        email TEXT PRIMARY KEY,
@@ -111,7 +123,7 @@ CREATE TABLE hack_reg_details (
                                   department VARCHAR(100),
                                   year_of_study VARCHAR(10),
                                   PRIMARY KEY (team_id, email)
-                                  --,CONSTRAINT hash_reg_details_team_fk FOREIGN KEY (team_id) REFERENCES hack_passes(team_id) ON DELETE CASCADE -- CHANGE TO HACK_PASSES
+                                  --CONSTRAINT hash_reg_details_team_fk FOREIGN KEY (team_id) REFERENCES hack_passes(team_id) ON DELETE CASCADE -- CHANGE TO HACK_PASSES
 );
 
 CREATE INDEX idx_hack_reg_details_email ON hack_reg_details(email);

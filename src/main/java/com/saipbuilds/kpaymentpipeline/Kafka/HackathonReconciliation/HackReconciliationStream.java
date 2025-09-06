@@ -85,6 +85,11 @@ public class HackReconciliationStream {
 
                     // Persist into DB
                     try {
+                        if (!payment.getPaymentID().equals(receipt.getPaymentID())){
+                            log.error(" PaymentID mismatch during reconciliation paymentId={} receiptPaymentId={}",
+                                    payment.getPaymentID(), receipt.getPaymentID());
+                            return null;
+                        }
                         boolean b = hackDuringReconciliationService.handleReconciliation(event);
                         return b ? event : null;
                     } catch (Exception e) {
