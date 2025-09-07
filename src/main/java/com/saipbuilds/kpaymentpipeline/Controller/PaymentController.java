@@ -26,7 +26,7 @@ public class PaymentController {
                 );
             }
 
-            log.info("📥 Received Payment POST: {}", event);
+            log.info(" Received Payment POST: {}", event);
             eventProducer.sendPaymentEvent(event);
 
             return ResponseEntity.status(201).body(

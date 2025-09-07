@@ -47,23 +47,18 @@ public class PaymentDatabaseServices {
     }
 
     public void insertDetails(PaymentReceivedEvent pre){
-        User user = new User(pre.getEmailID(), pre.getName(), pre.getPhoneNumber(), Instant.now().toString());
+        User user = new User(pre.getEmailID(), pre.getName(), pre.getPhoneNumber(), Instant.now().toString(), pre.getInstitution());
         userMapper.insertUser(user);
         log.info(" S1: Inserted Into Database for UserDetails: {}", user.getEmail());
     }
     public void insertReceipt(ReceiptReceivedEvent rre){
         Receipt receipt = new Receipt(rre.getPaymentID(), rre.getPaidOn(), rre.getMethod(), rre.getEmailID(), rre.getPhoneNumber(), false, rre.getAmount());
-//        User u = userMapper.findByEmail(rre.getEmailID());
-//        if (u == null) {
-//            log.warn("User with email {} not found." + rre.getEmailID());
-//            return;
-//        }
         receiptMapper.insertReceipt(receipt);
         log.info(" S2: Inserted Into Database for Receipt: {}", receipt.getEmail());
     }
-    public String insertOnePassAndReturnUUID(String emailId, String paymentID, String type) {
+    public String insertOnePassAndReturnUUID(String emailId, String paymentID, String type, String assigned_by) {
         String uuid = generateUUID5(type);
-        Pass pass = new Pass(uuid, emailId, paymentID, false, Instant.now().toString());
+        Pass pass = new Pass(uuid, emailId, paymentID, false, Instant.now().toString(),assigned_by);
         passMapper.insertPass(pass);
         log.info("Inserted pass for user: {}", emailId);
         return uuid;
@@ -79,7 +74,7 @@ public class PaymentDatabaseServices {
     }
 
     public void insertHackUserS1(HackathonPaymentReceivedEvent event) {
-        User user = new User(event.getLeader_email(), event.getMember_names().get(1), event.getMember_phones().get(1), Instant.now().toString());
+        User user = new User(event.getLeader_email(), event.getMember_names().get(1), event.getMember_phones().get(1), Instant.now().toString(), event.getMember_institutions().get(1));
         userMapper.insertUser(user);
     }
     public void insertHackDetailsS3(HackathonReconciledEvent event) {

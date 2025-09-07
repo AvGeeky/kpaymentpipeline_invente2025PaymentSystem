@@ -10,8 +10,8 @@ import java.util.List;
 @Mapper
 public interface UserMapper {
 
-    @Insert("INSERT INTO users(email, name, phone, created_at) " +
-            "VALUES(#{email}, #{name}, #{phone}, now()) on conflict do nothing")
+    @Insert("INSERT INTO users(email, name, phone, created_at, institution) " +
+            "VALUES(#{email}, #{name}, #{phone}, now(), #{institution}) on conflict do nothing")
     void insertUser(User user);
 
     @Select("SELECT * FROM users WHERE email = #{email}")

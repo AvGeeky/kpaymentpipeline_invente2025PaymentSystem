@@ -9,8 +9,8 @@ import java.util.UUID;
 @Mapper
 public interface PassMapper {
 
-    @Insert("INSERT INTO passes(pass_id, user_email, payment_id, ticket_issued, created_at) " +
-            "VALUES(#{uuid}, #{userEmail}, #{paymentId}, false, now())")
+    @Insert("INSERT INTO passes(pass_id, user_email, payment_id, ticket_issued, created_at, assigned_by) " +
+            "VALUES(#{uuid}, #{userEmail}, #{paymentId}, false, now(), #{assigned_by})")
     void insertPass(Pass pass);
 
 

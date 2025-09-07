@@ -46,4 +46,20 @@ public class emailUtil {
           //  System.out.println("EMAIL_KILLSWITCH is off. Email not sent.");
         }
     }
+
+    public void sendOTPEmail(String recipient, String otp) {
+        if ("on".equalsIgnoreCase(System.getenv("EMAIL_KILLSWITCH"))) {
+            asyncEmailSender.sendOtpEmail(recipient, otp);
+        } else {
+          //  System.out.println("EMAIL_KILLSWITCH is off. Email not sent.");
+        }
+    }
+
+    public void sendPaperPublicationEmail(String recipient, Map<String, String> eventIdToName, Map<String, String> eventIdToForm) {
+        if ("on".equalsIgnoreCase(System.getenv("EMAIL_KILLSWITCH"))) {
+            asyncEmailSender.sendBundledPaperPublicationEmail(recipient, eventIdToName, eventIdToForm);
+        } else {
+          //  System.out.println("EMAIL_KILLSWITCH is off. Email not sent.");
+        }
+    }
 }

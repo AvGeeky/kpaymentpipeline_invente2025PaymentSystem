@@ -3,22 +3,23 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto"; -- this is for gen_random_uuid() (hav
 -- CREATE EXTENSION IF NOT EXISTS "citext"; -- no longer needed, using TEXT instead
 -- Drop tables in reverse order of creation to avoid foreign key issues
 --
--- DROP TABLE IF EXISTS hack_reg_details CASCADE;
--- DROP TABLE IF EXISTS track CASCADE;
--- DROP TABLE IF EXISTS hack_passes CASCADE;
--- DROP TABLE IF EXISTS admins CASCADE;
--- DROP TABLE IF EXISTS slots CASCADE;
--- DROP TABLE IF EXISTS passes CASCADE;
--- DROP TABLE IF EXISTS receipts CASCADE;
--- -- DROP TABLE IF EXISTS events CASCADE;
--- -- DROP TABLE IF EXISTS departments CASCADE;
--- DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS hack_reg_details CASCADE;
+DROP TABLE IF EXISTS track CASCADE;
+DROP TABLE IF EXISTS hack_passes CASCADE;
+DROP TABLE IF EXISTS admins CASCADE;
+DROP TABLE IF EXISTS slots CASCADE;
+DROP TABLE IF EXISTS passes CASCADE;
+DROP TABLE IF EXISTS receipts CASCADE;
+-- DROP TABLE IF EXISTS events CASCADE;
+-- DROP TABLE IF EXISTS departments CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
 
 CREATE TABLE users ( -- participants
                        email TEXT PRIMARY KEY,
                        name TEXT NOT NULL,
                        phone TEXT,
-                       created_at TIMESTAMPTZ DEFAULT now()
+                       created_at TIMESTAMPTZ DEFAULT now(),
+                       institution TEXT
 );
 
 -- pre-filled by seed script
@@ -56,7 +57,8 @@ CREATE TABLE passes (
                         user_email TEXT,
                         payment_id VARCHAR(100),
                         ticket_issued BOOLEAN DEFAULT FALSE, -- whether qr code has been sent
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        assigned_by text
 );
 
 CREATE TABLE slots ( -- separated this out from events to have the attended field

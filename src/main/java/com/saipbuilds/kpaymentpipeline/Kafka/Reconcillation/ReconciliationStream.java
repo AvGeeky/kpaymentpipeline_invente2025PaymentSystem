@@ -73,7 +73,8 @@ public class ReconciliationStream {
                             receipt.getAmount(),
                             payment.getCreatedAt(),
                             payment.getEventBookingDetails(),
-                            payment.getType()
+                            payment.getType(),
+                            payment.getAssigned_by()
                     );
 
                     // Persist into DB

@@ -97,35 +97,45 @@ public class AsyncEmailSenderUtil {
                     + URLEncoder.encode(ticketUuid, StandardCharsets.UTF_8);
 
             ticketsHtml.append(String.format("""
-            <div style="background:#f9f9f9; border:1px solid #ddd; border-radius:12px; padding:20px; margin-bottom:20px; text-align:center;">
-                <h3 style="color:#0055A4; font-size:1.4rem; margin-top:0; margin-bottom:15px;">Ticket #%d</h3>
-                <img src="%s" alt="QR Code for Ticket %s" style="margin-bottom:15px;">
-                <p style="font-size:14px; color:#555; margin-bottom:10px;">Ticket ID: %s</p>
-                <table style="width:100%%; text-align:left; font-size:15px; color:#333; border-collapse: collapse;">
+    <div style="background:#f9f9f9; border:1px solid #ddd; border-radius:12px; padding:20px; margin-bottom:20px; text-align:center;">
+        <h3 style="color:#0055A4; font-size:1.4rem; margin-top:0; margin-bottom:15px;">Ticket #%d</h3>
+        <img src="%s" alt="QR Code for Ticket %s" style="margin-bottom:15px;">
+        <p style="font-size:14px; color:#555; margin-bottom:10px;">Ticket ID: %s</p>
+
+        <div style="border:1px solid #ddd; border-radius:8px; overflow:hidden; display:inline-block; max-width:100%%;">
+            <table style="width:100%%; text-align:left; font-size:15px; color:#333; border-collapse:separate; border-spacing:0;">
+                <thead style="background:#f5f7fa;">
                     <tr>
-                        <th style='padding:8px; border-bottom:1px solid #eee;'>Slot No.</th>
-                        <th style='padding:8px; border-bottom:1px solid #eee;'>Event ID</th>
-                        <th style='padding:8px; border-bottom:1px solid #eee;'>Event Name</th>
+                        <th style="padding:8px; border-bottom:1px solid #ddd; text-align:left;">Slot No.</th>
+                        <th style="padding:8px; border-bottom:1px solid #ddd; text-align:left;">Event ID</th>
+                        <th style="padding:8px; border-bottom:1px solid #ddd; text-align:left;">Event Name</th>
+                        <th style="padding:8px; border-bottom:1px solid #ddd; text-align:left;word-break:break-word; white-space:normal;">Department</th>
                     </tr>
-            """, ticketCounter++, qrCodeUrl, ticketUuid, ticketUuid));
+                </thead>
+                <tbody>
+    """, ticketCounter++, qrCodeUrl, ticketUuid, ticketUuid));
+
 
             for (Map.Entry<Integer, Integer> slotEntry : ticketDetails.entrySet()) {
                 int slotNo = slotEntry.getKey();
                 int eventId = slotEntry.getValue();
                 String eventName = null;
-
+                String eventDept = null;
                 try {
                     // Fetch event name using EventMapper
                     eventName = eventMapper.findEventNameById(eventId);
+                    eventDept = eventMapper.findDeptNameFromEventId(eventId);
                 } catch (Exception e) {
                     eventName = "Unknown Event";
+                    eventDept = "Unknown Dept";
                 }
 
                 ticketsHtml.append(String.format(
                         "<tr><td style='padding:8px; border-bottom:1px solid #eee;'>%d</td>"
                                 + "<td style='padding:8px; border-bottom:1px solid #eee;'>%d</td>"
+                                + "<td style='padding:8px; border-bottom:1px solid #eee;'>%s</td>"
                                 + "<td style='padding:8px; border-bottom:1px solid #eee;'>%s</td></tr>",
-                        slotNo, eventId, eventName
+                        slotNo, eventId, eventName, eventDept
                 ));
             }
             ticketsHtml.append("</table></div>");
@@ -319,5 +329,155 @@ public class AsyncEmailSenderUtil {
             }
         }
     }
+
+
+
+    private String generateBundledPaperPublicationHtml(Map<String, String> eventIdToName, Map<String, String> eventIdToForm) {
+        StringBuilder rows = new StringBuilder();
+
+        for (String eventId : eventIdToName.keySet()) {
+            String eventName = eventIdToName.get(eventId);
+            String gform = eventIdToForm.getOrDefault(eventId, "Link will be shared shortly");
+            rows.append(String.format("""
+            <tr>
+                <td style="padding:10px; border:1px solid #ddd;">%s</td>
+                <td style="padding:10px; border:1px solid #ddd;">%s</td>
+                <td style="padding:10px; border:1px solid #ddd; text-align:center;">
+                    <a href="%s" target="_blank" style="color:#0055A4; font-weight:bold;">Submit Abstract</a>
+                </td>
+            </tr>
+        """, eventName, eventId, gform));
+        }
+
+        return String.format("""
+        <div style="font-family:Segoe UI,Arial,sans-serif; background:#ffffff; padding:30px; border-radius:12px; border:1px solid #eee;">
+            <h2 style="color:#0055A4; text-align:center;">Paper Presentation Abstract Submissions</h2>
+            <p style="font-size:15px; color:#444; text-align:center;">
+                Hello, you have registered for one or more paper presentation events.<br>
+                Please find the submission forms below:
+            </p>
+            <table style="width:100%%; border-collapse:collapse; margin-top:20px; font-size:14px;">
+                <thead>
+                    <tr style="background:#f0f5ff;">
+                        <th style="padding:10px; border:1px solid #ddd;">Event Name</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Event ID</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Submission Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    %s
+                </tbody>
+            </table>
+            <p style="font-size:13px; color:#999; text-align:center; margin-top:20px;">
+                Sent by <strong>kPaymentPipeline</strong> · Please submit your abstracts before the deadline. Built by 
+            <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
+                Saipranav
+            </a>
+            </p>
+        </div>
+    """, rows);
+    }
+
+
+    @Async
+    public void sendBundledPaperPublicationEmail(String recipient, Map<String, String> eventIdToName, Map<String, String> eventIdToForm) {
+        for (int i = 0; i < MAX_ATTEMPTS; i++) {
+            if (mailTransport == null || !mailTransport.isConnected()) {
+                initEmailProperties();
+            }
+
+            String username = System.getenv("MAIL_ID");
+
+            try {
+                MimeMessage message = new MimeMessage(session);
+                message.setFrom(new InternetAddress(username, "Invente Paper Presentation"));
+                message.addRecipient(Message.RecipientType.TO, new InternetAddress(recipient));
+                message.setSubject("Paper Presentation Abstract Submission Links");
+
+                String htmlContent = generateBundledPaperPublicationHtml(eventIdToName, eventIdToForm);
+                message.setContent(htmlContent, "text/html; charset=utf-8");
+
+                Transport.send(message);
+                org.slf4j.LoggerFactory.getLogger(AsyncEmailSenderUtil.class)
+                        .info("Successfully sent bundled Paper Publication email to {}", recipient);
+                break;
+            } catch (MessagingException | UnsupportedEncodingException e) {
+                org.slf4j.LoggerFactory.getLogger(AsyncEmailSenderUtil.class)
+                        .error("Failed to send bundled Paper Publication email to {}", recipient, e);
+                try {
+                    Thread.sleep((long) (Math.pow(2, i) * 2000));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+
+
+
+
+
+    /**
+     * Sends a secure OTP email with liability disclaimer.
+     *
+     * @param recipient Recipient's email address.
+     * @param otp The one-time password to send.
+     */
+    @Async
+    public void sendOtpEmail(String recipient, String otp) {
+        for (int i = 0; i < MAX_ATTEMPTS; i++) {
+            if (mailTransport == null || !mailTransport.isConnected()) {
+                initEmailProperties();
+            }
+
+            String username = System.getenv("MAIL_ID");
+
+            try {
+                MimeMessage message = new MimeMessage(session);
+                message.setFrom(new InternetAddress(username, "Invente Security"));
+                message.addRecipient(Message.RecipientType.TO, new InternetAddress(recipient));
+                message.setSubject("Your Invente OTP - DO NOT SHARE");
+
+                String htmlContent = String.format("""
+                        <div style='font-family:Segoe UI,Arial,sans-serif; background:#ffffff; padding:30px; border-radius:12px; border:1px solid #eee;'>
+                            <h2 style='color:#d32f2f;'>Your One-Time Password (OTP)</h2>
+                            <p style='font-size:16px; color:#333;'>Dear user,</p>
+                            <p style='font-size:18px; color:#000;'><strong>%s</strong></p>
+                            <p style='font-size:14px; color:#555;'>Please use the above OTP to complete your verification. This OTP is valid for a limited time only.</p>
+                            <hr style='margin:20px 0;'>
+                            <p style='font-size:13px; color:#444; line-height:1.6;'>
+                                <strong>Strict Notice:</strong><br>
+                                - You are <strong>liable</strong> for any payments collected using an Invente account bound to this email.<br>
+                                - All transactions are <strong>monitored and tracked</strong> for security and compliance.<br>
+                                - DO NOT share this OTP with anyone. Our team will <strong>never</strong> ask you for your OTP.
+                            </p>
+                            <p style='font-size:12px; color:#999; text-align:center; margin-top:20px;'>
+                                Sent securely by Invente 2025 Systems. Built by 
+            <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
+                Saipranav
+            </a>
+                            </p>
+                        </div>
+                        """, otp);
+
+                message.setContent(htmlContent, "text/html; charset=utf-8");
+                Transport.send(message);
+                org.slf4j.LoggerFactory.getLogger(AsyncEmailSenderUtil.class)
+                        .info("Successfully sent OTP email to {}", recipient);
+                break;
+            } catch (MessagingException | UnsupportedEncodingException e) {
+                org.slf4j.LoggerFactory.getLogger(AsyncEmailSenderUtil.class)
+                        .error("Failed to send OTP email to {}", recipient, e);
+                try {
+                    Thread.sleep((long) (Math.pow(2, i) * 2000));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+    }
+
+
 
 }

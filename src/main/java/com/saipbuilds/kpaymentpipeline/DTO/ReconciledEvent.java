@@ -22,4 +22,5 @@ public class ReconciledEvent {
     private String createdAt;
     private List<Map<Integer,Integer>> eventBookingDetails;
     private String type;
+    private String assigned_by;
 }

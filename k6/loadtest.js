@@ -101,6 +101,8 @@ export default function () {
             createdAt: createdAt,
             eventBookingDetails: [{ "1": eventId }],
             type: "t",
+            institution:"SSN COLLEGE OF SADNESS",
+            assigned_by:"ONLINE"
         });
 
         const res = http.post(

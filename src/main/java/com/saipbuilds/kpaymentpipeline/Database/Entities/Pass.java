@@ -13,4 +13,5 @@ public class Pass {
     private String paymentId;   // FK → receipts.payment_id
     private boolean ticketIssued;
     private String createdAt;
+    private String assigned_by;
 }

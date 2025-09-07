@@ -20,6 +20,8 @@ public class PaymentReceivedEvent {
     private String createdAt;
     private List<Map<Integer,Integer>> eventBookingDetails;
     private String type;
+    private String assigned_by;
+    private String institution;
 }
 
 

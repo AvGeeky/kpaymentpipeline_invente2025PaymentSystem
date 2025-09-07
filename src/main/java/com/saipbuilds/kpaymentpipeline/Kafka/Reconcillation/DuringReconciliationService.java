@@ -43,7 +43,7 @@ public class DuringReconciliationService {
             }
         }
         for(Map<Integer,Integer> pass : event.getEventBookingDetails()){
-            String uuid = paymentDatabaseServices.insertOnePassAndReturnUUID(event.getEmailID(), event.getPaymentID(), event.getType());
+            String uuid = paymentDatabaseServices.insertOnePassAndReturnUUID(event.getEmailID(), event.getPaymentID(), event.getType(), event.getAssigned_by());
             paymentDatabaseServices.insertIntoSlots(uuid,pass);
         }
         receiptMapper.markPassGeneratedTrue(event.getPaymentID());
