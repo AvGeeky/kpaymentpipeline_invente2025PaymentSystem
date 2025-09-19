@@ -24,7 +24,7 @@ public class ReceiptConsumer {
     )
     public void consumeReceipt(ReceiptReceivedEvent event) {
         log.info(" S2 Consumed ReceiptReceivedEvent: {}", event);
-        paymentDatabaseServices.insertReceipt(event);
+        //paymentDatabaseServices.insertReceipt(event);
 
     }
 }

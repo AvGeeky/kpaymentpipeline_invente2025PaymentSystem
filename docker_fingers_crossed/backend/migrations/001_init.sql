@@ -3,6 +3,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto"; -- this is for gen_random_uuid() (hav
 -- CREATE EXTENSION IF NOT EXISTS "citext"; -- no longer needed, using TEXT instead
 -- Drop tables in reverse order of creation to avoid foreign key issues
 --
+                                         --  select e.name,external_id,d.name from events e join departments d on e.department_id = d.id;
 DROP TABLE IF EXISTS hack_reg_details CASCADE;
 DROP TABLE IF EXISTS track CASCADE;
 DROP TABLE IF EXISTS hack_passes CASCADE;

@@ -1,7 +1,9 @@
 package com.saipbuilds.kpaymentpipeline.Controller;
 
 import com.saipbuilds.kpaymentpipeline.DTO.ReceiptReceivedEvent;
+import com.saipbuilds.kpaymentpipeline.Database.Mapper.ReceiptMapper;
 import com.saipbuilds.kpaymentpipeline.Kafka.Producers.EventProducer;
+import com.saipbuilds.kpaymentpipeline.Service.PaymentDatabaseServices;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class ReceiptController {
     @Autowired
     EventProducer eventProducer;
+    private final PaymentDatabaseServices paymentDatabaseServices;
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -34,6 +37,7 @@ public class ReceiptController {
 
             log.info("Received Receipt POST: {}", event);
 
+            paymentDatabaseServices.insertReceipt(event);
             eventProducer.sendReceiptEvent(event);
 
             return ResponseEntity.status(201).body(

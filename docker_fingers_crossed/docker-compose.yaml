@@ -106,7 +106,7 @@ services:
   # Application Services
   # -----------------------
   payment-app:
-    image: saip2005/docx-app:6.1
+    image: saip2005/docx-app:6.2
     container_name: payment-app-v2
     ports:
       - "8080:8080"

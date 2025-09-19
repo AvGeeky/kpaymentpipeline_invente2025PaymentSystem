@@ -23,7 +23,7 @@ public class PaymentConsumer {
     )
     public void consumePayment(PaymentReceivedEvent event) {
         log.info(" S1 Consumed PaymentReceivedEvent: {}", event);
-        paymentDatabaseServices.insertDetails(event);
+        //paymentDatabaseServices.insertDetails(event);
     }
 }
 

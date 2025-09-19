@@ -1,7 +1,9 @@
 package com.saipbuilds.kpaymentpipeline.Controller;
 
 import com.saipbuilds.kpaymentpipeline.DTO.PaymentReceivedEvent;
+import com.saipbuilds.kpaymentpipeline.Database.MongoDB.PaymentDB;
 import com.saipbuilds.kpaymentpipeline.Kafka.Producers.EventProducer;
+import com.saipbuilds.kpaymentpipeline.Service.PaymentDatabaseServices;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,10 @@ public class PaymentController {
 
     private final EventProducer eventProducer;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final PaymentDatabaseServices paymentDatabaseServices;
+    private final PaymentDB paymentDB;
+
+
 
     @PostMapping
     public ResponseEntity<?> publishPayment(@RequestBody PaymentReceivedEvent event) {
@@ -27,6 +33,8 @@ public class PaymentController {
             }
 
             log.info(" Received Payment POST: {}", event);
+            paymentDatabaseServices.insertDetails(event);
+            paymentDB.insertPayment(event);
             eventProducer.sendPaymentEvent(event);
 
             return ResponseEntity.status(201).body(
