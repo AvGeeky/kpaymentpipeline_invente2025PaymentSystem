@@ -351,30 +351,39 @@ public class AsyncEmailSenderUtil {
 
         return String.format("""
         <div style="font-family:Segoe UI,Arial,sans-serif; background:#ffffff; padding:30px; border-radius:12px; border:1px solid #eee;">
-            <h2 style="color:#0055A4; text-align:center;">Paper Presentation Abstract Submissions</h2>
-            <p style="font-size:15px; color:#444; text-align:center;">
-                Hello, you have registered for one or more paper presentation events.<br>
-                Please find the submission forms below:
-            </p>
-            <table style="width:100%%; border-collapse:collapse; margin-top:20px; font-size:14px;">
-                <thead>
-                    <tr style="background:#f0f5ff;">
-                        <th style="padding:10px; border:1px solid #ddd;">Event Name</th>
-                        <th style="padding:10px; border:1px solid #ddd;">Event ID</th>
-                        <th style="padding:10px; border:1px solid #ddd;">Submission Link</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    %s
-                </tbody>
-            </table>
-            <p style="font-size:13px; color:#999; text-align:center; margin-top:20px;">
-                Sent by <strong>kPaymentPipeline</strong> · Please submit your abstracts before the deadline. Built by 
-            <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
-                Saipranav
-            </a>
-            </p>
-        </div>
+                        <div style="font-size:15px; color:#444; margin-bottom:20px;">
+                                            <p style="color:green; font-weight:bold; margin:0 0 10px 0;">✅ If you have already submitted your abstract and received the shortlisting mail:</p>
+                                            <p style="margin:0 0 15px 0;">You are all set to participate in the Paper Presentation. Please carry your technical pass on the day of the event for entry.</p>
+                                            <p style="color:#d9534f; font-weight:bold; margin:0 0 10px 0;">⚠ If you have not been shortlisted and registered directly through the website:</p>
+                                            <p style="margin:0;">Please note that abstract submission and registrations for this event are already closed, and the shortlisting process has been completed. You may show this mail at the registration desk on the day of Invente and switch to another event of your choice.</p>
+                                        </div>
+                        <p style="color:red; font-weight:bold; text-align:center;">
+                            Those who have already submitted their abstracts can ignore this email.
+                        </p>
+                        <h2 style="color:#0055A4; text-align:center;">Paper Presentation Abstract Submissions</h2>
+                        <p style="font-size:15px; color:#444; text-align:center;">
+                            Hello, you have registered for one or more paper presentation events.<br>
+                            Please find the submission forms below:
+                        </p>
+                        <table style="width:100%%; border-collapse:collapse; margin-top:20px; font-size:14px;">
+                            <thead>
+                                <tr style="background:#f0f5ff;">
+                                    <th style="padding:10px; border:1px solid #ddd;">Event Name</th>
+                                    <th style="padding:10px; border:1px solid #ddd;">Event ID</th>
+                                    <th style="padding:10px; border:1px solid #ddd;">Submission Link</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                %s
+                            </tbody>
+                        </table>
+                        <p style="font-size:13px; color:#999; text-align:center; margin-top:20px;">
+                            Sent by <strong>kPaymentPipeline</strong> · Please submit your abstracts before the deadline. Built by\s
+                            <a href="https://www.linkedin.com/in/saipranav-m/" target="_blank" style="color:#0055A4;text-decoration:none;">
+                                Saipranav
+                            </a>
+                        </p>
+                    </div>
     """, rows);
     }
 
