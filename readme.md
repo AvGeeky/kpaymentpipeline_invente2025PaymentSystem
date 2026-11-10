@@ -13,7 +13,6 @@ The service is intentionally a single deployable application with several intern
 - Redis for email deduplication, short-lived payment state, and health heartbeats.
 - Gmail API/JavaMail integrations for OTP, receipt, and ticket delivery.
 
-> **Architecture accuracy note:** the current code persists data and publishes Kafka events from the request/service path. The repository does not currently implement a transactional outbox table or outbox relay, so the diagrams below describe the implemented flow rather than calling it an outbox.
 
 ## Contents
 
@@ -359,38 +358,6 @@ The response reports the Redis heartbeat age and the IMAP listener's connection,
 - A running Kafka broker
 - Gmail/IMAP credentials if email ingestion or mail delivery is enabled
 
-### Build and test the application
-
-```bash
-./mvnw clean test
-./mvnw spring-boot:run
-```
-
-The application listens on port `8080` by default. Override it with `APP_PORT`.
-
-### Start development infrastructure
-
-For a compact Kafka/PostgreSQL setup:
-
-```bash
-docker compose -f Kafka_Dev/docker-compose.yaml up -d
-```
-
-For the fuller application-oriented stack, inspect and configure the environment file expected by the compose file first:
-
-```bash
-docker compose -f docx/docker-compose.yml up -d
-```
-
-The `docx` application image expects a compiled artifact named `target/payment.jar` in its Spring Boot build context. If building that image locally, make sure the jar is copied or renamed to that path before running Compose.
-
-Stop development services with:
-
-```bash
-docker compose -f Kafka_Dev/docker-compose.yaml down
-```
-
-Persistent PostgreSQL and Redis data are stored in Compose-managed volumes unless a compose variant says otherwise.
 
 ## Configuration
 
@@ -524,18 +491,3 @@ The default thresholds are:
 - 95th percentile request duration below 500 ms.
 
 The script contains a commented-out hackathon flow and uses generated test identifiers. Run it only against a non-production environment with a test database and test mailbox.
-
-## Reliability and security notes
-
-- Use unique `paymentID` values. They are the correlation key for Kafka Streams reconciliation and the primary key for receipts.
-- The HMAC interceptor signs the timestamp only, not the request body. This protects freshness and caller authentication but does not provide payload integrity; if body tampering is in scope, sign a canonical request representation as well.
-- The timestamp window is five minutes. Keep client and server clocks synchronized.
-- Kafka producer methods log send failures but do not expose a producer future to the controllers. Monitor failed-publish logs and consider explicit acknowledgement/retry handling for stronger delivery guarantees.
-- Standard payment persistence and Kafka publication are separate operations. A database success followed by a Kafka failure, or the reverse, can create a consistency gap. A transactional outbox or an explicit retry/reconciliation mechanism would address that gap.
-- Kafka Streams reconciles by `paymentID` and validates the expected pass amount before creating passes. The configured single-broker replication factor is not suitable for high availability.
-- Do not use wildcard trusted JSON packages or plaintext Kafka/Redis credentials in an internet-facing deployment without tightening the corresponding configuration.
-- Keep secrets in environment variables or a secret manager. Rotate HMAC, database, Redis, IMAP, and Gmail credentials independently.
-
-## License and project status
-
-No license file is currently included in this repository. Add a license and contribution guide before distributing the project outside its current organization.
